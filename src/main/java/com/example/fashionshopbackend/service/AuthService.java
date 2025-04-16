@@ -11,17 +11,23 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     @Autowired
-    private UserRepository userRepo;
+    private UserRepository userRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public User register(AuthRequest request) {
-        if (userRepo.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Username already exists");
+    public User register(AuthRequest authRequest) {
+        if (userRepository.existsByEmail(authRequest.getEmail())) {
+            throw new RuntimeException("Email already exists");
         }
 
-        User user = new User(request.getUsername(), passwordEncoder.encode(request.getPassword()));
-        return userRepo.save(user);
+        User user = new User();
+        user.setEmail(authRequest.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(authRequest.getPassword()));
+        user.setFullName(authRequest.getFullName());
+        user.setRole("Customer");
+        user.setProvider("local");
+
+        return userRepository.save(user);
     }
 }

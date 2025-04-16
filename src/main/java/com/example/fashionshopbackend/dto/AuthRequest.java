@@ -1,10 +1,11 @@
 package com.example.fashionshopbackend.dto;
-import lombok.*;
+
+import lombok.Data;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class AuthRequest {
-    private String username;
+
+    private String email;
     private String password;
+    private String fullName;
 }

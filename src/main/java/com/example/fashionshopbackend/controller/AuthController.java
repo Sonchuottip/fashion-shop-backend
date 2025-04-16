@@ -1,57 +1,53 @@
 package com.example.fashionshopbackend.controller;
 
-
 import com.example.fashionshopbackend.dto.AuthRequest;
 import com.example.fashionshopbackend.dto.AuthResponse;
+import com.example.fashionshopbackend.entity.User;
 import com.example.fashionshopbackend.service.AuthService;
-import com.example.fashionshopbackend.service.CustomUserDetailsService;
-import com.example.fashionshopbackend.util.JwtUtil;
+import com.example.fashionshopbackend.util.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     @Autowired
-    private AuthenticationManager authManager;
-
-    @Autowired
-    private CustomUserDetailsService userDetailsService;
-
-    @Autowired
     private AuthService authService;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JWTUtil jwtUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequest request) {
-        authService.register(request);
-        return ResponseEntity.ok("User registered successfully");
+    public ResponseEntity<?> register(@RequestBody AuthRequest authRequest) {
+        try {
+            User user = authService.register(authRequest);
+            return ResponseEntity.ok(new AuthResponse("Registration successful", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null));
+        }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
+    public ResponseEntity<?> login(@RequestBody AuthRequest authRequest) {
         try {
-            authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequest.getEmail(), authRequest.getPassword())
+            );
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            final UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
-            final String token = jwtUtil.generateToken(userDetails.getUsername());
-
-            return ResponseEntity.ok(new AuthResponse(token));
+            String jwt = jwtUtil.generateToken(authRequest.getEmail());
+            return ResponseEntity.ok(new AuthResponse("Login successful", jwt));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+            return ResponseEntity.badRequest().body(new AuthResponse("Invalid email or password", null));
         }
     }
 }
-
