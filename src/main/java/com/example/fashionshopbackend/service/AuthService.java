@@ -1,13 +1,25 @@
 package com.example.fashionshopbackend.service;
 
 import com.example.fashionshopbackend.dto.AuthRequest;
+import com.example.fashionshopbackend.dto.ChangePasswordRequest;
+import com.example.fashionshopbackend.dto.ResetPasswordRequest;
 import com.example.fashionshopbackend.entity.User;
 import com.example.fashionshopbackend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.example.fashionshopbackend.dto.ForgotPasswordRequest;
+import org.springframework.mail.SimpleMailMessage;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 @Service
+@Transactional
 public class AuthService {
 
     @Autowired
@@ -16,6 +28,13 @@ public class AuthService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JavaMailSender mailSender;
+
+    // Lưu tạm OTP (sử dụng HashMap, có thể thay bằng Redis)
+    private Map<String, String> otpStore = new HashMap<>();
+    private static final long OTP_EXPIRY_TIME = 10 * 60 * 1000; // 10 phút
+
     public User register(AuthRequest authRequest) {
         if (userRepository.existsByEmail(authRequest.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -23,11 +42,62 @@ public class AuthService {
 
         User user = new User();
         user.setEmail(authRequest.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(authRequest.getPassword()));
+        String encodedPassword = passwordEncoder.encode(authRequest.getPassword());
+        System.out.println("Encoded Password: " + encodedPassword);  // Debug
+        user.setPasswordHash(encodedPassword);
         user.setFullName(authRequest.getFullName());
+        System.out.println("Full Name: " + authRequest.getFullName());
         user.setRole("Customer");
         user.setProvider("local");
-
+        System.out.println("Saved user: " + user.getEmail() + ", id: " + user.getUserId());
         return userRepository.save(user);
+    }
+
+    public boolean changePassword(ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        System.out.println("User found: " + user.getEmail());
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Old password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        return true;
+    }
+
+    public String forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Tạo mã OTP ngẫu nhiên
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        otpStore.put(request.getEmail(), otp);
+
+        // Gửi email
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(request.getEmail());
+        message.setSubject("Password Reset OTP");
+        message.setText("Your OTP for password reset is: " + otp + ". It is valid for 10 minutes.");
+        mailSender.send(message);
+
+        return "OTP sent to " + request.getEmail();
+    }
+
+    public boolean resetPassword(ResetPasswordRequest request) {
+        String storedOtp = otpStore.get(request.getEmail());
+        if (storedOtp == null || !storedOtp.equals(request.getOtp())) {
+            throw new RuntimeException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // Xóa OTP sau khi sử dụng
+        otpStore.remove(request.getEmail());
+        return true;
     }
 }

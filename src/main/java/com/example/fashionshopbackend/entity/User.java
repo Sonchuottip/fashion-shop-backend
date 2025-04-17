@@ -2,7 +2,7 @@ package com.example.fashionshopbackend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "Users")
@@ -14,15 +14,16 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "UserID")
     private Long userId;
 
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 100,name = "fullname")
     private String fullName;
 
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(length = 255)
+    @Column(length = 255,name = "password_hash")
     private String passwordHash;
 
     @Column(length = 15)
@@ -43,9 +44,10 @@ public class User {
     @Column(length = 255)
     private String avatarUrl;
 
-    @Column(nullable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant createdAt;
 
-    @Column(nullable = false)
-    private OffsetDateTime updatedAt = OffsetDateTime.now();
+    @Column(name = "updated_at", insertable = false)
+    private Instant updatedAt;
+
 }
