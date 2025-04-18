@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.dto;
+package com.example.fashionshopbackend.dto.auth;
 
 import lombok.Data;
 

@@ -1,6 +1,6 @@
-package com.example.fashionshopbackend.controller;
+package com.example.fashionshopbackend.controller.common;
 
-import com.example.fashionshopbackend.dto.AuthResponse;
+import com.example.fashionshopbackend.dto.auth.AuthResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;

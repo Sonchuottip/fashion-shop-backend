@@ -1,10 +1,10 @@
-package com.example.fashionshopbackend.controller;
+package com.example.fashionshopbackend.controller.auth;
 
-import com.example.fashionshopbackend.dto.*;
-import com.example.fashionshopbackend.entity.User;
-import com.example.fashionshopbackend.repository.UserRepository;
-import com.example.fashionshopbackend.service.AuthService;
-import com.example.fashionshopbackend.util.JWTUtil;
+import com.example.fashionshopbackend.dto.auth.*;
+import com.example.fashionshopbackend.entity.auth.User;
+import com.example.fashionshopbackend.repository.user.UserRepository;
+import com.example.fashionshopbackend.service.auth.AuthService;
+import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

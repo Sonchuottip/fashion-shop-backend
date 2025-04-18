@@ -1,6 +1,6 @@
-package com.example.fashionshopbackend.repository;
+package com.example.fashionshopbackend.repository.user;
 
-import com.example.fashionshopbackend.entity.User;
+import com.example.fashionshopbackend.entity.auth.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

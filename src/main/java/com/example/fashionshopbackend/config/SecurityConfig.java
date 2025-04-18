@@ -1,15 +1,17 @@
 package com.example.fashionshopbackend.config;
 
-import com.example.fashionshopbackend.repository.UserRepository;
-import com.example.fashionshopbackend.service.CustomUserDetailsService;
-import com.example.fashionshopbackend.util.JWTAuthenticationFilter;
-import com.example.fashionshopbackend.util.JWTUtil;
+import com.example.fashionshopbackend.repository.user.UserRepository;
+import com.example.fashionshopbackend.service.auth.CustomUserDetailsService;
+import com.example.fashionshopbackend.util.jwt.JWTAuthenticationFilter;
+import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +21,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -44,6 +48,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("Admin")
                         .anyRequest().authenticated()
+                )
+                // Thêm hỗ trợ OAuth2 login
+                .oauth2Login(oauth2 -> oauth2
+                        .defaultSuccessUrl("/api/auth/oauth2/callback", true)
                 )
                 // Chỉ áp dụng authenticationEntryPoint cho các yêu cầu không phải permitAll()
                 .exceptionHandling(exception -> exception

@@ -1,17 +1,17 @@
-package com.example.fashionshopbackend.service;
+package com.example.fashionshopbackend.service.auth;
 
-import com.example.fashionshopbackend.dto.AuthRequest;
-import com.example.fashionshopbackend.dto.ChangePasswordRequest;
-import com.example.fashionshopbackend.dto.ResetPasswordRequest;
-import com.example.fashionshopbackend.entity.User;
-import com.example.fashionshopbackend.repository.UserRepository;
+import com.example.fashionshopbackend.dto.auth.AuthRequest;
+import com.example.fashionshopbackend.dto.auth.ChangePasswordRequest;
+import com.example.fashionshopbackend.dto.auth.ResetPasswordRequest;
+import com.example.fashionshopbackend.entity.auth.User;
+import com.example.fashionshopbackend.repository.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.example.fashionshopbackend.dto.ForgotPasswordRequest;
+import com.example.fashionshopbackend.dto.auth.ForgotPasswordRequest;
 import org.springframework.mail.SimpleMailMessage;
 
 import java.util.HashMap;

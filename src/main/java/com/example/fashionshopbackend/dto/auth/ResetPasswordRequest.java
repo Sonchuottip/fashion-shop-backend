@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.dto;
+package com.example.fashionshopbackend.dto.auth;
 
 public class ResetPasswordRequest {
     private String email;
