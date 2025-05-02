@@ -6,11 +6,8 @@ import lombok.Data;
 
 @Data
 public class ProductImageDTO {
-    @NotNull
-    private Integer productId;
-
-    @NotBlank
+    private Integer imageId; // Dùng cho cập nhật, có thể null khi tạo mới
+    private Integer productId; // Liên kết với sản phẩm
     private String imageUrl;
-
     private Boolean isPrimary;
 }

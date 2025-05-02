@@ -1,32 +1,20 @@
 package com.example.fashionshopbackend.dto.auth;
 
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
+
+@Setter
+@Getter
 public class ResetPasswordRequest {
+    // Getters và setters
+
     private String email;
     private String otp;
+    @NotBlank(message = "Token is required")
+    private String token;
+
+    @NotBlank(message = "New password is required")
     private String newPassword;
 
-    // Getters và setters
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getOtp() {
-        return otp;
-    }
-
-    public void setOtp(String otp) {
-        this.otp = otp;
-    }
-
-    public String getNewPassword() {
-        return newPassword;
-    }
-
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
 }

@@ -1,8 +1,6 @@
 package com.example.fashionshopbackend.service.auth;
 
-import com.example.fashionshopbackend.dto.auth.AuthRequest;
-import com.example.fashionshopbackend.dto.auth.ChangePasswordRequest;
-import com.example.fashionshopbackend.dto.auth.ResetPasswordRequest;
+import com.example.fashionshopbackend.dto.auth.*;
 import com.example.fashionshopbackend.entity.auth.User;
 import com.example.fashionshopbackend.repository.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +9,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.example.fashionshopbackend.dto.auth.ForgotPasswordRequest;
 import org.springframework.mail.SimpleMailMessage;
 
 import java.util.HashMap;
@@ -99,5 +96,26 @@ public class AuthService {
         // Xóa OTP sau khi sử dụng
         otpStore.remove(request.getEmail());
         return true;
+    }
+
+    public User updateProfile(String email, UserUpdateRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với email: " + email));
+
+        // Cập nhật các trường thông tin từ UserUpdateRequest
+        if (request.getFullName() != null) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getAddress() != null) {
+            user.setAddress(request.getAddress());
+        }
+        // Không cập nhật email, passwordHash, role, provider, providerId, avatarUrl qua API này
+        // (nếu cần, có thể mở rộng logic sau)
+
+        // Lưu và trả về người dùng đã cập nhật
+        return userRepository.save(user);
     }
 }

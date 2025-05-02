@@ -20,7 +20,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth") // Sửa mapping để khớp với request
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
@@ -59,57 +59,18 @@ public class AuthController {
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            String jwt = jwtUtil.generateToken(authRequest.getEmail());
+            // Lấy user từ database để lấy role
+            User user = userRepository.findByEmail(authRequest.getEmail())
+                    .orElseThrow(() -> new RuntimeException("User not found after authentication"));
+            String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+            logger.info("Login successful for user: {}", authRequest.getEmail());
             return ResponseEntity.ok(new AuthResponse("Login successful", jwt));
         } catch (BadCredentialsException e) {
-            logger.error("Invalid credentials: {}", e.getMessage(), e);
+            logger.error("Invalid credentials for email: {}", authRequest.getEmail());
             return ResponseEntity.badRequest().body(new AuthResponse("Invalid email or password", null));
         } catch (Exception e) {
-            logger.error("Login error: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(new AuthResponse("Invalid email or password", null));
-        }
-    }
-
-    @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        logger.debug("Received change password request: oldPassword={}, newPassword={}",
-                request.getOldPassword(), request.getNewPassword());
-        try {
-            authService.changePassword(request);
-            logger.info("Password changed successfully for user: {}",
-                    SecurityContextHolder.getContext().getAuthentication().getName());
-            return ResponseEntity.ok(new AuthResponse("Password changed successfully", null));
-        } catch (IllegalArgumentException e) {
-            logger.error("Invalid input: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(new AuthResponse("Invalid input: " + e.getMessage(), null));
-        } catch (IllegalStateException e) {
-            logger.error("Authentication failed: {}", e.getMessage(), e);
-            return ResponseEntity.status(403).body(new AuthResponse("Authentication failed: " + e.getMessage(), null));
-        } catch (Exception e) {
-            logger.error("Unexpected error during password change: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(new AuthResponse("An error occurred: " + e.getMessage(), null));
-        }
-    }
-
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        try {
-            String response = authService.forgotPassword(request);
-            return ResponseEntity.ok(new AuthResponse(response, null));
-        } catch (Exception e) {
-            logger.error("Forgot password failed: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null));
-        }
-    }
-
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
-        try {
-            authService.resetPassword(request);
-            return ResponseEntity.ok(new AuthResponse("Password reset successful", null));
-        } catch (Exception e) {
-            logger.error("Reset password failed: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null));
+            logger.error("Login error for email: {} - {}", authRequest.getEmail(), e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Login failed: " + e.getMessage(), null));
         }
     }
 
@@ -117,7 +78,7 @@ public class AuthController {
     public ResponseEntity<?> getOAuth2AuthorizationUrl(@PathVariable String provider) {
         ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(provider);
         if (clientRegistration == null) {
-            logger.warn("Invalid provider: {}", provider);
+            logger.warn("Invalid OAuth2 provider: {}", provider);
             return ResponseEntity.badRequest().body(new AuthResponse("Invalid provider: " + provider, null));
         }
 
@@ -136,7 +97,7 @@ public class AuthController {
     public ResponseEntity<?> oauth2Callback(@RequestParam(value = "code", required = false) String code,
                                             @RequestParam(value = "error", required = false) String error) {
         if (error != null) {
-            logger.error("OAuth2 callback failed: {}", error);
+            logger.error("OAuth2 callback failed with error: {}", error);
             return ResponseEntity.badRequest().body(new AuthResponse("OAuth2 login failed: " + error, null));
         }
 
@@ -147,18 +108,119 @@ public class AuthController {
         }
 
         String email = authentication.getName();
-        String jwt = jwtUtil.generateToken(email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found after OAuth2 authentication"));
+        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
         logger.info("OAuth2 login successful for user: {}", email);
         return ResponseEntity.ok(new AuthResponse("OAuth2 login successful", jwt));
     }
 
-    @GetMapping("/admin/test")
-    public ResponseEntity<?> testAdminAccess() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_Admin"))) {
-            logger.warn("Admin access denied for user: {}", auth != null ? auth.getName() : "unknown");
-            return ResponseEntity.status(403).body(new AuthResponse("Access denied", null));
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        logger.debug("Received change password request for user: {}",
+                SecurityContextHolder.getContext().getAuthentication().getName());
+        try {
+            authService.changePassword(request);
+            logger.info("Password changed successfully for user: {}",
+                    SecurityContextHolder.getContext().getAuthentication().getName());
+            return ResponseEntity.ok(new AuthResponse("Password changed successfully", null));
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid input: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Invalid input: " + e.getMessage(), null));
+        } catch (IllegalStateException e) {
+            logger.error("Authentication failed: {}", e.getMessage());
+            return ResponseEntity.status(403).body(new AuthResponse("Authentication failed: " + e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Unexpected error during password change: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("An error occurred: " + e.getMessage(), null));
         }
-        return ResponseEntity.ok("Welcome, Admin!");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            String response = authService.forgotPassword(request);
+            logger.info("Forgot password request processed for email: {}", request.getEmail());
+            return ResponseEntity.ok(new AuthResponse(response, null));
+        } catch (Exception e) {
+            logger.error("Forgot password failed for email: {} - {}", request.getEmail(), e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request);
+            logger.info("Password reset successful for token: {}", request.getToken());
+            return ResponseEntity.ok(new AuthResponse("Password reset successful", null));
+        } catch (Exception e) {
+            logger.error("Reset password failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse(e.getMessage(), null));
+        }
+    }
+
+  // Đăng xuất
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                SecurityContextHolder.clearContext();
+                logger.info("Đăng xuất thành công cho người dùng: {}", authentication.getName());
+                return ResponseEntity.ok(new AuthResponse("Đăng xuất thành công", null));
+            } else {
+                logger.warn("Không tìm thấy phiên hoạt động để đăng xuất");
+                return ResponseEntity.badRequest().body(new AuthResponse("Không có phiên hoạt động", null));
+            }
+        } catch (Exception e) {
+            logger.error("Đăng xuất thất bại: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Đăng xuất thất bại: " + e.getMessage(), null));
+        }
+    }
+
+    // Lấy thông tin tài khoản
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Người dùng chưa được xác thực");
+                return ResponseEntity.status(403).body(new AuthResponse("Người dùng chưa được xác thực", null));
+            }
+
+            String email = authentication.getName();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+            logger.info("Lấy thông tin hồ sơ thành công cho người dùng: {}", email);
+            return ResponseEntity.ok(user); // Giả sử có thể trả về trực tiếp entity User hoặc cần ánh xạ sang DTO
+        } catch (Exception e) {
+            logger.error("Không thể lấy thông tin hồ sơ: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Không thể lấy thông tin hồ sơ: " + e.getMessage(), null));
+        }
+    }
+
+    // Cập nhật thông tin cá nhân
+    @PutMapping("/profile/update")
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody UserUpdateRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Người dùng chưa được xác thực để cập nhật hồ sơ");
+                return ResponseEntity.status(403).body(new AuthResponse("Người dùng chưa được xác thực", null));
+            }
+
+            String email = authentication.getName();
+            User updatedUser = authService.updateProfile(email, request);
+            logger.info("Cập nhật hồ sơ thành công cho người dùng: {}, với thông tin: fullName={}, phoneNumber={}, address={}",
+                    email, request.getFullName(), request.getPhoneNumber(), request.getAddress());
+            return ResponseEntity.ok(new AuthResponse("Cập nhật hồ sơ thành công", null));
+        } catch (IllegalArgumentException e) {
+            logger.error("Dữ liệu không hợp lệ khi cập nhật hồ sơ: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Dữ liệu không hợp lệ: " + e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Không thể cập nhật hồ sơ: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Không thể cập nhật hồ sơ: " + e.getMessage(), null));
+        }
     }
 }

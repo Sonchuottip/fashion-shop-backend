@@ -34,7 +34,10 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         logger.debug("Processing request URI: {}", requestURI);
 
         // Bỏ qua các endpoint không yêu cầu token
-        if (requestURI.equals("/api/auth/login") || requestURI.equals("/api/auth/register")) {
+        if (    requestURI.equals("/api/auth/login") ||
+                requestURI.equals("/api/auth/register") ||
+                requestURI.equals("/api/auth/forgot-password") ||
+                requestURI.equals("/api/auth/reset-password")) {
             logger.debug("Skipping JWT authentication for URI: {}", requestURI);
             filterChain.doFilter(request, response);
             return;

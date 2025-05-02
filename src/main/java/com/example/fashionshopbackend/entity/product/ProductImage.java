@@ -2,7 +2,7 @@ package com.example.fashionshopbackend.entity.product;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "ProductImages")
@@ -11,18 +11,17 @@ public class ProductImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ImageID")
-    private Integer id;
+    private Integer imageId;
 
-    @ManyToOne
-    @JoinColumn(name = "ProductID", nullable = false)
-    private Product product;
+    @Column(name = "ProductID", nullable = false)
+    private Integer productId;
 
     @Column(name = "ImageURL", nullable = false, length = 255)
     private String imageUrl;
 
     @Column(name = "IsPrimary")
-    private Boolean isPrimary = false;
+    private Boolean isPrimary;
 
-    @Column(name = "CreatedAt", nullable = false, updatable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    @Column(name = "CreatedAt", insertable = false, updatable = false)
+    private Instant createdAt;
 }

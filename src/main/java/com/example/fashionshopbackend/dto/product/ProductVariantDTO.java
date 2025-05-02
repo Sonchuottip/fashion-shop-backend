@@ -7,21 +7,11 @@ import lombok.Data;
 
 @Data
 public class ProductVariantDTO {
-    @NotNull
-    private Integer productId;
-
-    @NotBlank
+    private Integer variantId; // Dùng cho cập nhật, có thể null khi tạo mới
+    private Integer productId; // Liên kết với sản phẩm
     private String sku;
-
     private String color;
-
     private String size;
-
-    @NotNull
-    @Positive
     private Double price;
-
-    @NotNull
-    @Positive
     private Integer stock;
 }

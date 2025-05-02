@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class CategoryService {
 
@@ -22,6 +25,7 @@ public class CategoryService {
         Category category = new Category();
         category.setName(dto.getName());
         category.setDescription(dto.getDescription());
+        // Không cần set createdAt và updatedAt vì entity tự động xử lý
         return categoryRepository.save(category);
     }
 
@@ -36,6 +40,7 @@ public class CategoryService {
 
         category.setName(dto.getName());
         category.setDescription(dto.getDescription());
+        // updatedAt sẽ tự động được cập nhật bởi @PreUpdate trong entity
         return categoryRepository.save(category);
     }
 
@@ -45,5 +50,19 @@ public class CategoryService {
             throw new IllegalArgumentException("Category not found with ID: " + id);
         }
         categoryRepository.deleteById(id);
+    }
+
+    public List<CategoryDTO> getAllCategories() {
+        return categoryRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    private CategoryDTO convertToDTO(Category category) {
+        CategoryDTO dto = new CategoryDTO();
+        dto.setCategoryId(category.getId()); // Khớp với tên trường id trong entity
+        dto.setName(category.getName());
+        dto.setDescription(category.getDescription());
+        return dto;
     }
 }

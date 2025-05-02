@@ -7,8 +7,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.util.ArrayList;
+import java.util.Collections;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -20,10 +21,14 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
-        if (user.getPasswordHash() == null) {
-            throw new IllegalStateException("Password hash cannot be null for user: " + email);
+        if (user.getPasswordHash() == null && user.getProvider().equals("local")) {
+            throw new IllegalStateException("Password hash cannot be null for local user: " + email);
         }
+
+        // Gán quyền dựa trên cột Role
         return new org.springframework.security.core.userdetails.User(
-                user.getEmail(), user.getPasswordHash(), new ArrayList<>());
+                user.getEmail(),
+                user.getPasswordHash() != null ? user.getPasswordHash() : "", // Xử lý trường hợp OAuth
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
     }
 }

@@ -10,25 +10,13 @@ import java.util.List;
 
 @Data
 public class ProductWithImagesAndVariantsDTO {
-    @NotBlank
+    private Integer productId; // Dùng cho cập nhật, có thể null khi tạo mới
     private String name;
-
     private String description;
-
-    @NotNull
-    @Positive
     private Double price;
-
-    @NotNull
-    @Positive
     private Integer stock;
-
-    @Pattern(regexp = "Active|Inactive|Deleted", message = "Status must be 'Active', 'Inactive', or 'Deleted'")
-    private String status;
-
     private Integer categoryId;
-
-    private List<ProductImageDTO> images; // Danh sách ảnh
-
-    private List<ProductVariantDTO> variants; // Danh sách biến thể
+    private String status;
+    private List<ProductImageDTO> images;
+    private List<ProductVariantDTO> variants;
 }

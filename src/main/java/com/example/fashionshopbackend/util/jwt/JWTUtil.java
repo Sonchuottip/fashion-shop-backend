@@ -47,8 +47,9 @@ public class JWTUtil {
         return expiration.before(new Date());
     }
 
-    public String generateToken(String email) {
+    public String generateToken(String email, String role) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role);
         return createToken(claims, email);
     }
 

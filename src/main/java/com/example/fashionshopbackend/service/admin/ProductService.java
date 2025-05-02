@@ -1,22 +1,19 @@
 package com.example.fashionshopbackend.service.admin;
 
-import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductImageDTO;
 import com.example.fashionshopbackend.dto.product.ProductVariantDTO;
-import com.example.fashionshopbackend.dto.product.ProductWithImagesDTO;
-import com.example.fashionshopbackend.entity.category.Category;
+import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.entity.product.Product;
 import com.example.fashionshopbackend.entity.product.ProductImage;
 import com.example.fashionshopbackend.entity.product.ProductVariant;
-import com.example.fashionshopbackend.repository.category.CategoryRepository;
 import com.example.fashionshopbackend.repository.product.ProductImageRepository;
 import com.example.fashionshopbackend.repository.product.ProductRepository;
 import com.example.fashionshopbackend.repository.product.ProductVariantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
@@ -25,177 +22,141 @@ public class ProductService {
     private ProductRepository productRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
     private ProductImageRepository productImageRepository;
 
     @Autowired
     private ProductVariantRepository productVariantRepository;
 
-    @Transactional
-    public Product createProduct(ProductDTO dto) {
-        Product product = new Product();
-        product.setName(dto.getName());
-        product.setDescription(dto.getDescription());
-        product.setPrice(BigDecimal.valueOf(dto.getPrice()));
-        product.setStock(dto.getStock());
-        if (dto.getStatus() != null) {
-            product.setStatus(dto.getStatus());
-        }
-
-        if (dto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + dto.getCategoryId()));
-            product.setCategory(category);
-        }
-
-        return productRepository.save(product);
+    public List<ProductWithImagesAndVariantsDTO> getAllProductsWithImagesAndVariants() {
+        List<Product> products = productRepository.findAll();
+        return products.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
-    @Transactional
-    public Product createProductWithImages(ProductWithImagesDTO dto) {
-        Product product = new Product();
-        product.setName(dto.getName());
-        product.setDescription(dto.getDescription());
-        product.setPrice(BigDecimal.valueOf(dto.getPrice()));
-        product.setStock(dto.getStock());
-        if (dto.getStatus() != null) {
-            product.setStatus(dto.getStatus());
-        }
-
-        if (dto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + dto.getCategoryId()));
-            product.setCategory(category);
-        }
-
+    public void createProductWithImagesAndVariants(ProductWithImagesAndVariantsDTO dto) {
+        Product product = convertToEntity(dto);
         product = productRepository.save(product);
+        final Integer productId = product.getProductId(); // Biến final để sử dụng trong lambda
 
-        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
-            for (ProductImageDTO imageDTO : dto.getImages()) {
-                ProductImage image = new ProductImage();
-                image.setProduct(product);
-                image.setImageUrl(imageDTO.getImageUrl());
-                image.setIsPrimary(imageDTO.getIsPrimary() != null ? imageDTO.getIsPrimary() : false);
-                productImageRepository.save(image);
-            }
+        // Lưu ảnh
+        if (dto.getImages() != null) {
+            List<ProductImage> images = dto.getImages().stream()
+                    .map(imageDto -> convertToImageEntity(imageDto, productId))
+                    .collect(Collectors.toList());
+            productImageRepository.saveAll(images);
         }
 
-        return product;
+        // Lưu biến thể
+        if (dto.getVariants() != null) {
+            List<ProductVariant> variants = dto.getVariants().stream()
+                    .map(variantDto -> convertToVariantEntity(variantDto, productId))
+                    .collect(Collectors.toList());
+            productVariantRepository.saveAll(variants);
+        }
     }
 
-    @Transactional
-    public Product updateProduct(Integer id, ProductDTO dto) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
-
+    public void updateProductWithImagesAndVariants(ProductWithImagesAndVariantsDTO dto) {
+        Product product = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + dto.getProductId()));
         product.setName(dto.getName());
         product.setDescription(dto.getDescription());
-        product.setPrice(BigDecimal.valueOf(dto.getPrice()));
+        product.setPrice(dto.getPrice());
         product.setStock(dto.getStock());
-        if (dto.getStatus() != null) {
-            product.setStatus(dto.getStatus());
+        product.setCategoryId(dto.getCategoryId());
+        product.setStatus(dto.getStatus());
+        productRepository.save(product);
+
+        // Cập nhật hoặc thêm ảnh
+        if (dto.getImages() != null) {
+            productImageRepository.deleteByProductId(dto.getProductId()); // Xóa ảnh cũ
+            List<ProductImage> images = dto.getImages().stream()
+                    .map(imageDto -> convertToImageEntity(imageDto, dto.getProductId()))
+                    .collect(Collectors.toList());
+            productImageRepository.saveAll(images);
         }
 
-        if (dto.getCategoryId() != null) {
-            Category category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found with ID: " + dto.getCategoryId()));
-            product.setCategory(category);
-        } else {
-            product.setCategory(null);
+        // Cập nhật hoặc thêm biến thể
+        if (dto.getVariants() != null) {
+            productVariantRepository.deleteByProductId(dto.getProductId()); // Xóa biến thể cũ
+            List<ProductVariant> variants = dto.getVariants().stream()
+                    .map(variantDto -> convertToVariantEntity(variantDto, dto.getProductId()))
+                    .collect(Collectors.toList());
+            productVariantRepository.saveAll(variants);
         }
-
-        return productRepository.save(product);
     }
 
-    @Transactional
-    public void deleteProduct(Integer id) {
-        if (!productRepository.existsById(id)) {
-            throw new IllegalArgumentException("Product not found with ID: " + id);
-        }
+    public void deleteProductWithImagesAndVariants(Integer id) {
+        productImageRepository.deleteByProductId(id);
+        productVariantRepository.deleteByProductId(id);
         productRepository.deleteById(id);
     }
 
-    @Transactional
-    public ProductImage createProductImage(ProductImageDTO dto) {
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + dto.getProductId()));
+    private ProductWithImagesAndVariantsDTO convertToDTO(Product product) {
+        ProductWithImagesAndVariantsDTO dto = new ProductWithImagesAndVariantsDTO();
+        dto.setProductId(product.getProductId());
+        dto.setName(product.getName());
+        dto.setDescription(product.getDescription());
+        dto.setPrice(product.getPrice());
+        dto.setStock(product.getStock());
+        dto.setCategoryId(product.getCategoryId());
+        dto.setStatus(product.getStatus());
+        dto.setImages(productImageRepository.findByProductId(product.getProductId()).stream()
+                .map(this::convertToImageDTO).collect(Collectors.toList()));
+        dto.setVariants(productVariantRepository.findByProductId(product.getProductId()).stream()
+                .map(this::convertToVariantDTO).collect(Collectors.toList()));
+        return dto;
+    }
 
+    private Product convertToEntity(ProductWithImagesAndVariantsDTO dto) {
+        Product product = new Product();
+        product.setProductId(dto.getProductId());
+        product.setName(dto.getName());
+        product.setDescription(dto.getDescription());
+        product.setPrice(dto.getPrice());
+        product.setStock(dto.getStock());
+        product.setCategoryId(dto.getCategoryId());
+        product.setStatus(dto.getStatus());
+        return product;
+    }
+
+    private ProductImage convertToImageEntity(ProductImageDTO dto, Integer productId) {
         ProductImage image = new ProductImage();
-        image.setProduct(product);
+        image.setImageId(dto.getImageId());
+        image.setProductId(productId);
         image.setImageUrl(dto.getImageUrl());
-        image.setIsPrimary(dto.getIsPrimary() != null ? dto.getIsPrimary() : false);
-        return productImageRepository.save(image);
+        image.setIsPrimary(dto.getIsPrimary());
+        return image;
     }
 
-    @Transactional
-    public ProductImage updateProductImage(Integer id, ProductImageDTO dto) {
-        ProductImage image = productImageRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product image not found with ID: " + id));
-
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + dto.getProductId()));
-
-        image.setProduct(product);
-        image.setImageUrl(dto.getImageUrl());
-        image.setIsPrimary(dto.getIsPrimary() != null ? dto.getIsPrimary() : image.getIsPrimary());
-        return productImageRepository.save(image);
+    private ProductImageDTO convertToImageDTO(ProductImage image) {
+        ProductImageDTO dto = new ProductImageDTO();
+        dto.setImageId(image.getImageId());
+        dto.setProductId(image.getProductId());
+        dto.setImageUrl(image.getImageUrl());
+        dto.setIsPrimary(image.getIsPrimary());
+        return dto;
     }
 
-    @Transactional
-    public void deleteProductImage(Integer id) {
-        if (!productImageRepository.existsById(id)) {
-            throw new IllegalArgumentException("Product image not found with ID: " + id);
-        }
-        productImageRepository.deleteById(id);
-    }
-
-    @Transactional
-    public ProductVariant createProductVariant(ProductVariantDTO dto) {
-        if (productVariantRepository.existsBySku(dto.getSku())) {
-            throw new IllegalArgumentException("SKU already exists");
-        }
-
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + dto.getProductId()));
-
+    private ProductVariant convertToVariantEntity(ProductVariantDTO dto, Integer productId) {
         ProductVariant variant = new ProductVariant();
-        variant.setProduct(product);
+        variant.setVariantId(dto.getVariantId());
+        variant.setProductId(productId);
         variant.setSku(dto.getSku());
         variant.setColor(dto.getColor());
         variant.setSize(dto.getSize());
-        variant.setPrice(BigDecimal.valueOf(dto.getPrice()));
+        variant.setPrice(dto.getPrice());
         variant.setStock(dto.getStock());
-        return productVariantRepository.save(variant);
+        return variant;
     }
 
-    @Transactional
-    public ProductVariant updateProductVariant(Integer id, ProductVariantDTO dto) {
-        ProductVariant variant = productVariantRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product variant not found with ID: " + id));
-
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + dto.getProductId()));
-
-        if (!variant.getSku().equals(dto.getSku()) && productVariantRepository.existsBySku(dto.getSku())) {
-            throw new IllegalArgumentException("SKU already exists");
-        }
-
-        variant.setProduct(product);
-        variant.setSku(dto.getSku());
-        variant.setColor(dto.getColor());
-        variant.setSize(dto.getSize());
-        variant.setPrice(BigDecimal.valueOf(dto.getPrice()));
-        variant.setStock(dto.getStock());
-        return productVariantRepository.save(variant);
-    }
-
-    @Transactional
-    public void deleteProductVariant(Integer id) {
-        if (!productVariantRepository.existsById(id)) {
-            throw new IllegalArgumentException("Product variant not found with ID: " + id);
-        }
-        productVariantRepository.deleteById(id);
+    private ProductVariantDTO convertToVariantDTO(ProductVariant variant) {
+        ProductVariantDTO dto = new ProductVariantDTO();
+        dto.setVariantId(variant.getVariantId());
+        dto.setProductId(variant.getProductId());
+        dto.setSku(variant.getSku());
+        dto.setColor(variant.getColor());
+        dto.setSize(variant.getSize());
+        dto.setPrice(variant.getPrice());
+        dto.setStock(variant.getStock());
+        return dto;
     }
 }

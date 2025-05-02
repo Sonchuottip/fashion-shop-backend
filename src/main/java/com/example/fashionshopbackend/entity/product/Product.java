@@ -1,11 +1,8 @@
 package com.example.fashionshopbackend.entity.product;
 
-import com.example.fashionshopbackend.entity.category.Category;
 import jakarta.persistence.*;
 import lombok.Data;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "Products")
@@ -14,7 +11,7 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ProductID")
-    private Integer id;
+    private Integer productId;
 
     @Column(name = "Name", nullable = false, length = 255)
     private String name;
@@ -22,27 +19,21 @@ public class Product {
     @Column(name = "Description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "Price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
+    @Column(name = "Price", nullable = false)
+    private Double price;
 
-    @Column(name = "Stock", nullable = false)
-    private Integer stock = 0;
+    @Column(name = "Stock")
+    private Integer stock;
 
-    @ManyToOne
-    @JoinColumn(name = "CategoryID")
-    private Category category;
+    @Column(name = "CategoryID")
+    private Integer categoryId;
 
-    @Column(name = "Status", length = 20)
-    private String status = "Active";
+    @Column(name = "Status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Active'")
+    private String status;
 
-    @Column(name = "CreatedAt", nullable = false, updatable = false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    @Column(name = "CreatedAt", insertable = false, updatable = false)
+    private Instant createdAt;
 
-    @Column(name = "UpdatedAt", nullable = false)
-    private OffsetDateTime updatedAt = OffsetDateTime.now();
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = OffsetDateTime.now();
-    }
+    @Column(name = "UpdatedAt", insertable = false)
+    private Instant updatedAt;
 }
