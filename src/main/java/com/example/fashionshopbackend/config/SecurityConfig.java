@@ -4,6 +4,7 @@ import com.example.fashionshopbackend.repository.user.UserRepository;
 import com.example.fashionshopbackend.service.auth.CustomUserDetailsService;
 import com.example.fashionshopbackend.util.jwt.JWTAuthenticationFilter;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
+import com.nimbusds.jose.jwk.RSAKey;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -38,13 +39,16 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private RSAKey rsaKey; // Inject RSAKey từ RsaKeyConfig
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Define các endpoint công khai không yêu cầu xác thực
         RequestMatcher permitAllMatcher = new AntPathRequestMatcher("/api/auth/{register|login|forgot-password|reset-password|oauth2/**}");
 
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable()) // Đảm bảo CSRF được vô hiệu hóa
                 .authorizeHttpRequests(auth -> auth
                         // Chỉ cho phép công khai các endpoint cần thiết
                         .requestMatchers("/api/auth/register",
@@ -58,7 +62,7 @@ public class SecurityConfig {
                                 "/api/auth/profile/update",
                                 "/api/auth/change-password").authenticated()
                         // Yêu cầu vai trò Admin cho các endpoint admin
-                        .requestMatchers("/api/admin/**").hasAuthority("Admin") // Sử dụng hasAuthority thay vì hasRole
+                        .requestMatchers("/api/admin/**").hasAuthority("Admin")
                         // Tất cả các yêu cầu khác phải được xác thực
                         .anyRequest().authenticated()
                 )
@@ -84,7 +88,10 @@ public class SecurityConfig {
                         })
                 )
                 // Sử dụng stateless session vì dùng JWT
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation().none() // Ngăn session fixation và không tạo session
+                );
 
         // Thêm bộ lọc JWT trước UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

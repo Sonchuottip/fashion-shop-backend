@@ -5,6 +5,7 @@ import com.example.fashionshopbackend.entity.auth.User;
 import com.example.fashionshopbackend.repository.user.UserRepository;
 import com.example.fashionshopbackend.service.auth.AuthService;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
+import com.nimbusds.jose.JOSEException;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,13 @@ public class AuthController {
             // Lấy user từ database để lấy role
             User user = userRepository.findByEmail(authRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found after authentication"));
-            String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+            String jwt;
+            try {
+                jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+            } catch (JOSEException e) {
+                logger.error("Failed to generate JWT for user {}: {}", authRequest.getEmail(), e.getMessage());
+                return ResponseEntity.badRequest().body(new AuthResponse("Failed to generate token: " + e.getMessage(), null));
+            }
             logger.info("Login successful for user: {}", authRequest.getEmail());
             return ResponseEntity.ok(new AuthResponse("Login successful", jwt));
         } catch (BadCredentialsException e) {
@@ -110,7 +117,13 @@ public class AuthController {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth2 authentication"));
-        String jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String jwt;
+        try {
+            jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        } catch (JOSEException e) {
+            logger.error("Failed to generate JWT for user {}: {}", email, e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Failed to generate token: " + e.getMessage(), null));
+        }
         logger.info("OAuth2 login successful for user: {}", email);
         return ResponseEntity.ok(new AuthResponse("OAuth2 login successful", jwt));
     }
@@ -160,7 +173,7 @@ public class AuthController {
         }
     }
 
-  // Đăng xuất
+    // Đăng xuất
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         try {
