@@ -25,10 +25,10 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new IllegalStateException("Password hash cannot be null for local user: " + email);
         }
 
-        // Gán quyền dựa trên cột Role
+        // Sử dụng email làm username trong UserDetails
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
-                user.getPasswordHash() != null ? user.getPasswordHash() : "", // Xử lý trường hợp OAuth
+                user.getPasswordHash() != null ? user.getPasswordHash() : "",
                 Collections.singletonList(new SimpleGrantedAuthority(user.getRole())));
     }
 }

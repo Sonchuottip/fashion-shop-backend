@@ -1,5 +1,6 @@
 package com.example.fashionshopbackend.service.admin;
 
+import com.example.fashionshopbackend.dto.category.CategoryDTO;
 import com.example.fashionshopbackend.dto.product.ProductImageDTO;
 import com.example.fashionshopbackend.dto.product.ProductVariantDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
@@ -27,17 +28,39 @@ public class ProductService {
     @Autowired
     private ProductVariantRepository productVariantRepository;
 
+    @Autowired
+    private CategoryService categoryService; // Tích hợp CategoryService
+
     public List<ProductWithImagesAndVariantsDTO> getAllProductsWithImagesAndVariants() {
         List<Product> products = productRepository.findAll();
+        return products.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public ProductWithImagesAndVariantsDTO getProductById(Integer id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
+        return convertToDTO(product);
+    }
+
+    public List<ProductWithImagesAndVariantsDTO> searchProducts(String query) {
+        List<Product> products = productRepository.findByNameContainingIgnoreCase(query);
+        return products.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<CategoryDTO> getAllCategories() {
+        return categoryService.getAllCategories(); // Sử dụng CategoryService để lấy danh mục
+    }
+
+    public List<ProductWithImagesAndVariantsDTO> getProductsByCategoryId(Integer categoryId) {
+        List<Product> products = productRepository.findByCategoryId(categoryId);
         return products.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     public void createProductWithImagesAndVariants(ProductWithImagesAndVariantsDTO dto) {
         Product product = convertToEntity(dto);
         product = productRepository.save(product);
-        final Integer productId = product.getProductId(); // Biến final để sử dụng trong lambda
+        final Integer productId = product.getProductId();
 
-        // Lưu ảnh
         if (dto.getImages() != null) {
             List<ProductImage> images = dto.getImages().stream()
                     .map(imageDto -> convertToImageEntity(imageDto, productId))
@@ -45,7 +68,6 @@ public class ProductService {
             productImageRepository.saveAll(images);
         }
 
-        // Lưu biến thể
         if (dto.getVariants() != null) {
             List<ProductVariant> variants = dto.getVariants().stream()
                     .map(variantDto -> convertToVariantEntity(variantDto, productId))
@@ -65,18 +87,16 @@ public class ProductService {
         product.setStatus(dto.getStatus());
         productRepository.save(product);
 
-        // Cập nhật hoặc thêm ảnh
         if (dto.getImages() != null) {
-            productImageRepository.deleteByProductId(dto.getProductId()); // Xóa ảnh cũ
+            productImageRepository.deleteByProductId(dto.getProductId());
             List<ProductImage> images = dto.getImages().stream()
                     .map(imageDto -> convertToImageEntity(imageDto, dto.getProductId()))
                     .collect(Collectors.toList());
             productImageRepository.saveAll(images);
         }
 
-        // Cập nhật hoặc thêm biến thể
         if (dto.getVariants() != null) {
-            productVariantRepository.deleteByProductId(dto.getProductId()); // Xóa biến thể cũ
+            productVariantRepository.deleteByProductId(dto.getProductId());
             List<ProductVariant> variants = dto.getVariants().stream()
                     .map(variantDto -> convertToVariantEntity(variantDto, dto.getProductId()))
                     .collect(Collectors.toList());

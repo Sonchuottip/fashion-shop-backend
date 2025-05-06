@@ -29,69 +29,58 @@ public class JWTUtil {
     @Autowired
     private RSAKey rsaKey;
 
-    public String generateToken(String email, String role) throws JOSEException {
-        // Create JWT claims
+    public String generateToken(String email, Long userId, String role) throws JOSEException {
         JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
                 .subject(email)
+                .claim("userId", userId) // Thêm userId vào token
                 .claim("role", role)
                 .issuer("fashion-shop-backend")
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + expiration * 1000))
                 .build();
 
-        // Create JWS header
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS256);
-
-        // Create JWS object
         JWSObject jwsObject = new JWSObject(jwsHeader, new Payload(claimsSet.toJSONObject()));
-
-        // Ký JWS với thuật toán HS256 và khóa bí mật
         JWSSigner signer = new MACSigner(secret.getBytes());
         jwsObject.sign(signer);
 
-        // Create JWE header
         JWEHeader jweHeader = new JWEHeader.Builder(JWEAlgorithm.RSA_OAEP_256, EncryptionMethod.A256GCM)
                 .contentType("JWT")
                 .build();
 
-        // Create JWE object với JWS đã ký làm payload
         JWEObject jweObject = new JWEObject(jweHeader, new Payload(jwsObject));
-
-        // Encrypt the JWE
         jweObject.encrypt(new RSAEncrypter(rsaKey));
 
-        // Serialize to string
         String token = jweObject.serialize();
         logger.debug("Generated JWE token: {}", token);
         return token;
     }
 
     public String getEmailFromToken(String token) throws ParseException, JOSEException {
-        // Parse and decrypt JWE token
         JWEObject jweObject = JWEObject.parse(token);
         jweObject.decrypt(new RSADecrypter(rsaKey));
-
-        // Get the payload (which is a JWS)
         SignedJWT signedJWT = SignedJWT.parse(jweObject.getPayload().toString());
         return signedJWT.getJWTClaimsSet().getSubject();
     }
 
-    public boolean validateToken(String token, UserDetails userDetails) throws ParseException, JOSEException {
-        // Parse and decrypt JWE token
+    public Long getUserIdFromToken(String token) throws ParseException, JOSEException {
         JWEObject jweObject = JWEObject.parse(token);
         jweObject.decrypt(new RSADecrypter(rsaKey));
+        SignedJWT signedJWT = SignedJWT.parse(jweObject.getPayload().toString());
+        return (Long) signedJWT.getJWTClaimsSet().getClaim("userId");
+    }
 
-        // Get the payload (which is a JWS)
+    public boolean validateToken(String token, UserDetails userDetails) throws ParseException, JOSEException {
+        JWEObject jweObject = JWEObject.parse(token);
+        jweObject.decrypt(new RSADecrypter(rsaKey));
         SignedJWT signedJWT = SignedJWT.parse(jweObject.getPayload().toString());
         JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
 
-        // Validate email
         String email = claimsSet.getSubject();
         if (!email.equals(userDetails.getUsername())) {
             return false;
         }
 
-        // Validate expiration
         Date expirationTime = claimsSet.getExpirationTime();
         return expirationTime != null && !expirationTime.before(new Date());
     }

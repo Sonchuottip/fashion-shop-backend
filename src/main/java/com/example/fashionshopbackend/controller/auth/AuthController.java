@@ -60,12 +60,11 @@ public class AuthController {
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Lấy user từ database để lấy role
             User user = userRepository.findByEmail(authRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("User not found after authentication"));
             String jwt;
             try {
-                jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+                jwt = jwtUtil.generateToken(user.getEmail(), user.getUserId(), user.getRole());
             } catch (JOSEException e) {
                 logger.error("Failed to generate JWT for user {}: {}", authRequest.getEmail(), e.getMessage());
                 return ResponseEntity.badRequest().body(new AuthResponse("Failed to generate token: " + e.getMessage(), null));
@@ -119,7 +118,7 @@ public class AuthController {
                 .orElseThrow(() -> new RuntimeException("User not found after OAuth2 authentication"));
         String jwt;
         try {
-            jwt = jwtUtil.generateToken(user.getEmail(), user.getRole());
+            jwt = jwtUtil.generateToken(user.getEmail(), user.getUserId(), user.getRole());
         } catch (JOSEException e) {
             logger.error("Failed to generate JWT for user {}: {}", email, e.getMessage());
             return ResponseEntity.badRequest().body(new AuthResponse("Failed to generate token: " + e.getMessage(), null));
@@ -173,7 +172,6 @@ public class AuthController {
         }
     }
 
-    // Đăng xuất
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         try {
@@ -192,7 +190,6 @@ public class AuthController {
         }
     }
 
-    // Lấy thông tin tài khoản
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile() {
         try {
@@ -206,14 +203,13 @@ public class AuthController {
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
             logger.info("Lấy thông tin hồ sơ thành công cho người dùng: {}", email);
-            return ResponseEntity.ok(user); // Giả sử có thể trả về trực tiếp entity User hoặc cần ánh xạ sang DTO
+            return ResponseEntity.ok(user);
         } catch (Exception e) {
             logger.error("Không thể lấy thông tin hồ sơ: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new AuthResponse("Không thể lấy thông tin hồ sơ: " + e.getMessage(), null));
         }
     }
 
-    // Cập nhật thông tin cá nhân
     @PutMapping("/profile/update")
     public ResponseEntity<?> updateProfile(@Valid @RequestBody UserUpdateRequest request) {
         try {

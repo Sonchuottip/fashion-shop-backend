@@ -27,14 +27,14 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JWTAuthenticationFilter.class);
 
     @Autowired
-    @Lazy // Trì hoãn khởi tạo JWTUtil
+    @Lazy
     private JWTUtil jwtUtil;
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
     @Autowired
-    private RSAKey rsaKey; // Inject RSAKey từ RsaKeyConfig
+    private RSAKey rsaKey;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -42,7 +42,6 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         logger.debug("Processing request URI: {}", requestURI);
 
-        // Bỏ qua các endpoint không yêu cầu token
         if (requestURI.equals("/api/auth/login") ||
                 requestURI.equals("/api/auth/register") ||
                 requestURI.equals("/api/auth/forgot-password") ||
@@ -59,17 +58,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
             try {
-                // Parse and decrypt JWE token
-                JWEObject jweObject = JWEObject.parse(jwt);
-                logger.debug("JWE Header: {}", jweObject.getHeader().toString());
-
-                // Decrypt token
-                jweObject.decrypt(new RSADecrypter(rsaKey));
-                String payload = jweObject.getPayload().toString();
-                logger.debug("Decrypted JWE Payload: {}", payload);
-
-                // Extract email from decrypted payload using JWTUtil
-                email = jwtUtil.getEmailFromToken(jwt); // Truyền toàn bộ token
+                email = jwtUtil.getEmailFromToken(jwt);
                 logger.debug("Extracted email from token: {}", email);
             } catch (Exception e) {
                 logger.error("Invalid JWE token: {}", e.getMessage());
@@ -85,7 +74,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             try {
                 if (jwtUtil.validateToken(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                            new UsernamePasswordAuthenticationToken(userDetails, jwt, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                     logger.debug("Authentication set for user: {}", email);
