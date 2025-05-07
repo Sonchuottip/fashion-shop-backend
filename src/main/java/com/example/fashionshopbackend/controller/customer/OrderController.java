@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.controller.order;
+package com.example.fashionshopbackend.controller.customer;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
 import com.example.fashionshopbackend.dto.order.OrderDTO;

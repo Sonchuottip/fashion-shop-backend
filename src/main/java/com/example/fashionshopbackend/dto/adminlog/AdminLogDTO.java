@@ -1,0 +1,11 @@
+package com.example.fashionshopbackend.dto.adminlog;
+
+import lombok.Data;
+
+@Data
+public class AdminLogDTO {
+    private Long logId;
+    private Long adminId;
+    private String action;
+    private String timestamp;
+}

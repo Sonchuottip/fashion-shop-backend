@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface CouponRepository extends JpaRepository<Coupon, Integer> {
+public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     // Tìm mã giảm giá theo mã (Code)
     Optional<Coupon> findByCode(String code);

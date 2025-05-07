@@ -1,16 +1,20 @@
 package com.example.fashionshopbackend.controller.admin;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
+import com.example.fashionshopbackend.dto.adminlog.AdminLogDTO;
 import com.example.fashionshopbackend.dto.category.CategoryDTO;
 import com.example.fashionshopbackend.dto.coupon.CouponDTO;
+import com.example.fashionshopbackend.dto.inventoryhistory.InventoryHistoryDTO;
+import com.example.fashionshopbackend.dto.inventoryhistory.InventoryUpdateDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.dto.user.UserDTO;
+import com.example.fashionshopbackend.entity.coupon.Coupon;
 import com.example.fashionshopbackend.service.admin.CategoryService;
-import com.example.fashionshopbackend.service.admin.CouponService;
 import com.example.fashionshopbackend.service.admin.ProductService;
-
 import com.example.fashionshopbackend.service.admin.UserService;
-import jakarta.servlet.http.HttpServletResponse;
+import com.example.fashionshopbackend.service.adminlog.AdminLogService;
+import com.example.fashionshopbackend.service.coupon.CouponService;
+import com.example.fashionshopbackend.service.inventoryhistory.InventoryHistoryService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +23,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -41,6 +44,12 @@ public class AdminController {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private AdminLogService adminLogService;
+
+    @Autowired
+    private InventoryHistoryService inventoryHistoryService;
+
     @GetMapping("/categories")
     public ResponseEntity<?> getAllCategories() {
         try {
@@ -53,7 +62,6 @@ public class AdminController {
         }
     }
 
-    // Categories - Thêm, sửa, xóa danh mục sản phẩm
     @PostMapping("/categories")
     public ResponseEntity<?> createCategory(@Valid @RequestBody CategoryDTO dto) {
         try {
@@ -113,7 +121,6 @@ public class AdminController {
         }
     }
 
-    // Tạo mới sản phẩm cùng ảnh và biến thể
     @PostMapping("/products")
     public ResponseEntity<?> createProduct(@Valid @RequestBody ProductWithImagesAndVariantsDTO dto) {
         try {
@@ -130,12 +137,11 @@ public class AdminController {
         }
     }
 
-    // Cập nhật sản phẩm cùng ảnh và biến thể
     @PutMapping("/products/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable Integer id, @Valid @RequestBody ProductWithImagesAndVariantsDTO dto) {
         try {
             logger.debug("Updating product ID: {} with images and variants", id);
-            dto.setProductId(id); // Đảm bảo productId khớp với đường dẫn
+            dto.setProductId(id);
             productService.updateProductWithImagesAndVariants(dto);
             logger.info("Product, images, and variants updated successfully: ID {}", id);
             return ResponseEntity.ok(new AdminResponse("Product, images, and variants updated successfully"));
@@ -148,7 +154,6 @@ public class AdminController {
         }
     }
 
-    // Xóa sản phẩm cùng ảnh và biến thể
     @DeleteMapping("/products/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable Integer id) {
         try {
@@ -165,16 +170,28 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/coupons")
+    public ResponseEntity<?> getAllCoupons() {
+        try {
+            logger.debug("Fetching all coupons");
+            List<CouponDTO> coupons = couponService.getAllCoupons();
+            return ResponseEntity.ok(coupons);
+        } catch (Exception e) {
+            logger.error("Error fetching coupons: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching coupons: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/coupons")
     public ResponseEntity<?> createCoupon(@Valid @RequestBody CouponDTO dto) {
         try {
             logger.debug("Creating coupon: {}", dto.getCode());
-            couponService.createCoupon(dto);
-            logger.info("Coupon created successfully: {}", dto.getCode());
-            return ResponseEntity.ok(new AdminResponse("Coupon created successfully"));
+            Coupon coupon = couponService.createCoupon(dto);
+            logger.info("Coupon created successfully: {}", coupon.getCode());
+            return ResponseEntity.ok(new AdminResponse("Coupon created successfully with ID: " + coupon.getCouponId()));
         } catch (IllegalArgumentException e) {
             logger.error("Error creating coupon: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AdminResponse(e.getMessage()));
+            return ResponseEntity.badRequest().body(new AdminResponse("Failed to create coupon: " + e.getMessage()));
         } catch (Exception e) {
             logger.error("Error creating coupon: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(new AdminResponse("Error creating coupon: " + e.getMessage()));
@@ -182,10 +199,10 @@ public class AdminController {
     }
 
     @PutMapping("/coupons/{id}")
-    public ResponseEntity<?> updateCoupon(@PathVariable Integer id, @Valid @RequestBody CouponDTO dto) {
+    public ResponseEntity<?> updateCoupon(@PathVariable Long id, @Valid @RequestBody CouponDTO dto) {
         try {
             logger.debug("Updating coupon ID: {}", id);
-            dto.setCouponId(id); // Đảm bảo couponId khớp với đường dẫn
+            dto.setCouponId(id);
             couponService.updateCoupon(dto);
             logger.info("Coupon updated successfully: ID {}", id);
             return ResponseEntity.ok(new AdminResponse("Coupon updated successfully"));
@@ -199,7 +216,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/coupons/{id}")
-    public ResponseEntity<?> deleteCoupon(@PathVariable Integer id) {
+    public ResponseEntity<?> deleteCoupon(@PathVariable Long id) {
         try {
             logger.debug("Deleting coupon ID: {}", id);
             couponService.deleteCoupon(id);
@@ -214,7 +231,6 @@ public class AdminController {
         }
     }
 
-    // Danh sách người dùng
     @GetMapping("/users")
     public ResponseEntity<?> getUsers() {
         try {
@@ -227,18 +243,58 @@ public class AdminController {
         }
     }
 
-    // Xuất dữ liệu ra Excel
-    @GetMapping("/export")
-    public void exportData(HttpServletResponse response) throws IOException {
+    @GetMapping("/logs")
+    public ResponseEntity<?> getAdminLogs() {
         try {
-            logger.debug("Exporting data to Excel");
-            response.setContentType("application/vnd.ms-excel");
-            response.setHeader("Content-Disposition", "attachment; filename=data_export_" + System.currentTimeMillis() + ".xlsx");
-            couponService.exportDataToExcel(response);
-            logger.info("Data exported successfully");
+            logger.debug("Fetching all admin logs");
+            List<AdminLogDTO> logs = adminLogService.getAllAdminLogs();
+            return ResponseEntity.ok(logs);
         } catch (Exception e) {
-            logger.error("Error exporting data: {}", e.getMessage(), e);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error exporting data: " + e.getMessage());
+            logger.error("Error fetching admin logs: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching admin logs: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/inventory/history/{variantId}")
+    public ResponseEntity<?> getInventoryHistory(@PathVariable Long variantId) {
+        try {
+            logger.debug("Fetching inventory history for variant ID: {}", variantId);
+            List<InventoryHistoryDTO> history = inventoryHistoryService.getInventoryHistoryByVariant(variantId);
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            logger.error("Error fetching inventory history: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching inventory history: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/inventory/{variantId}")
+    public ResponseEntity<?> getCurrentInventory(@PathVariable Long variantId) {
+        try {
+            logger.debug("Fetching current inventory for variant ID: {}", variantId);
+            Integer currentQuantity = inventoryHistoryService.getCurrentInventory(variantId);
+            return ResponseEntity.ok(new AdminResponse("Current inventory: " + currentQuantity));
+        } catch (IllegalArgumentException e) {
+            logger.error("Variant not found: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AdminResponse(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error fetching current inventory: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching current inventory: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/inventory/{variantId}/update")
+    public ResponseEntity<?> updateInventory(@PathVariable Long variantId, @Valid @RequestBody InventoryUpdateDTO dto) {
+        try {
+            logger.debug("Updating inventory for variant ID: {}, quantity: {}, reason: {}", variantId, dto.getQuantity(), dto.getReason());
+            inventoryHistoryService.updateInventory(variantId, dto.getQuantity(), dto.getReason());
+            logger.info("Inventory updated successfully for variant ID: {}", variantId);
+            return ResponseEntity.ok(new AdminResponse("Inventory updated successfully"));
+        } catch (IllegalArgumentException e) {
+            logger.error("Error updating inventory: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AdminResponse(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error updating inventory: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error updating inventory: " + e.getMessage()));
         }
     }
 }

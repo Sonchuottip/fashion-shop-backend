@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.controller.payment;
+package com.example.fashionshopbackend.controller.customer;
 
 import com.example.fashionshopbackend.dto.payment.PaymentRequest;
 import com.example.fashionshopbackend.dto.payment.PaymentResponse;
