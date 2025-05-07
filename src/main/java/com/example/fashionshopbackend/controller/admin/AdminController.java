@@ -6,6 +6,7 @@ import com.example.fashionshopbackend.dto.category.CategoryDTO;
 import com.example.fashionshopbackend.dto.coupon.CouponDTO;
 import com.example.fashionshopbackend.dto.inventoryhistory.InventoryHistoryDTO;
 import com.example.fashionshopbackend.dto.inventoryhistory.InventoryUpdateDTO;
+import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.dto.user.UserDTO;
 import com.example.fashionshopbackend.entity.coupon.Coupon;
@@ -113,11 +114,24 @@ public class AdminController {
     @GetMapping("/products")
     public ResponseEntity<?> getAllProducts() {
         try {
-            logger.debug("Fetching all products with images and variants");
-            return ResponseEntity.ok(productService.getAllProductsWithImagesAndVariants());
+            logger.debug("Fetching all products");
+            List<ProductDTO> products = productService.getAllProducts();
+            return ResponseEntity.ok(products);
         } catch (Exception e) {
             logger.error("Error fetching products: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(new AdminResponse("Error fetching products: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/products/{id}")
+    public ResponseEntity<?> getProductWithImagesAndVariantsById(@PathVariable Integer id) {
+        try {
+            logger.debug("Fetching product with ID: {}", id);
+            ProductWithImagesAndVariantsDTO product = productService.getProductWithImagesAndVariantsById(id);
+            return ResponseEntity.ok(product);
+        } catch (Exception e) {
+            logger.error("Error fetching product with ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching product: " + e.getMessage()));
         }
     }
 

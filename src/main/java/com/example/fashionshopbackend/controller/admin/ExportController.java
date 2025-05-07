@@ -2,6 +2,7 @@ package com.example.fashionshopbackend.controller.admin;
 
 import com.example.fashionshopbackend.dto.category.CategoryDTO;
 import com.example.fashionshopbackend.dto.coupon.CouponDTO;
+import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.dto.user.UserDTO;
 import com.example.fashionshopbackend.service.admin.CategoryService;
@@ -144,9 +145,9 @@ public class ExportController {
             headerRow.createCell(i).setCellValue(headers[i]);
         }
 
-        List<ProductWithImagesAndVariantsDTO> products = productService.getAllProductsWithImagesAndVariants();
+        List<ProductDTO> products = productService.getAllProducts();
         int rowNum = 1;
-        for (ProductWithImagesAndVariantsDTO product : products) {
+        for (ProductDTO product : products) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(product.getProductId());
             row.createCell(1).setCellValue(product.getName());

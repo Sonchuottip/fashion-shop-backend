@@ -2,6 +2,7 @@ package com.example.fashionshopbackend.controller.open;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
 import com.example.fashionshopbackend.dto.category.CategoryDTO;
+import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.service.admin.ProductService;
 import org.slf4j.Logger;
@@ -22,11 +23,11 @@ public class ProductController {
     private ProductService productService;
 
     // [GET] /api/products - Danh sách sản phẩm
-    @GetMapping
+    @GetMapping("/products")
     public ResponseEntity<?> getAllProducts() {
         try {
             logger.debug("Fetching all products");
-            List<ProductWithImagesAndVariantsDTO> products = productService.getAllProductsWithImagesAndVariants();
+            List<ProductDTO> products = productService.getAllProducts();
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             logger.error("Error fetching products: {}", e.getMessage(), e);
@@ -34,22 +35,17 @@ public class ProductController {
         }
     }
 
-    // [GET] /api/products/{id} - Chi tiết sản phẩm
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getProductById(@PathVariable Integer id) {
+    @GetMapping("/products/{id}")
+    public ResponseEntity<?> getProductWithImagesAndVariantsById(@PathVariable Integer id) {
         try {
             logger.debug("Fetching product with ID: {}", id);
-            ProductWithImagesAndVariantsDTO product = productService.getProductById(id);
+            ProductWithImagesAndVariantsDTO product = productService.getProductWithImagesAndVariantsById(id);
             return ResponseEntity.ok(product);
-        } catch (IllegalArgumentException e) {
-            logger.error("Product not found: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AdminResponse(e.getMessage()));
         } catch (Exception e) {
-            logger.error("Error fetching product: {}", e.getMessage(), e);
+            logger.error("Error fetching product with ID {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(new AdminResponse("Error fetching product: " + e.getMessage()));
         }
     }
-
     // [GET] /api/products/search?query=abc - Tìm kiếm sản phẩm
     @GetMapping("/search")
     public ResponseEntity<?> searchProducts(@RequestParam String query) {

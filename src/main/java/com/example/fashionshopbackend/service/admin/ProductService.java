@@ -4,6 +4,7 @@ import com.example.fashionshopbackend.dto.category.CategoryDTO;
 import com.example.fashionshopbackend.dto.product.ProductImageDTO;
 import com.example.fashionshopbackend.dto.product.ProductVariantDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
+import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.entity.product.Product;
 import com.example.fashionshopbackend.entity.product.ProductImage;
 import com.example.fashionshopbackend.entity.product.ProductVariant;
@@ -29,14 +30,14 @@ public class ProductService {
     private ProductVariantRepository productVariantRepository;
 
     @Autowired
-    private CategoryService categoryService; // Tích hợp CategoryService
+    private CategoryService categoryService;
 
-    public List<ProductWithImagesAndVariantsDTO> getAllProductsWithImagesAndVariants() {
+    public List<ProductDTO> getAllProducts() {
         List<Product> products = productRepository.findAll();
-        return products.stream().map(this::convertToDTO).collect(Collectors.toList());
+        return products.stream().map(this::convertToProductDTO).collect(Collectors.toList());
     }
 
-    public ProductWithImagesAndVariantsDTO getProductById(Integer id) {
+    public ProductWithImagesAndVariantsDTO getProductWithImagesAndVariantsById(Integer id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
         return convertToDTO(product);
@@ -48,7 +49,7 @@ public class ProductService {
     }
 
     public List<CategoryDTO> getAllCategories() {
-        return categoryService.getAllCategories(); // Sử dụng CategoryService để lấy danh mục
+        return categoryService.getAllCategories();
     }
 
     public List<ProductWithImagesAndVariantsDTO> getProductsByCategoryId(Integer categoryId) {
@@ -108,6 +109,18 @@ public class ProductService {
         productImageRepository.deleteByProductId(id);
         productVariantRepository.deleteByProductId(id);
         productRepository.deleteById(id);
+    }
+
+    private ProductDTO convertToProductDTO(Product product) {
+        ProductDTO dto = new ProductDTO();
+        dto.setProductId(product.getProductId());
+        dto.setName(product.getName());
+        dto.setDescription(product.getDescription());
+        dto.setPrice(product.getPrice());
+        dto.setStock(product.getStock());
+        dto.setCategoryId(product.getCategoryId());
+        dto.setStatus(product.getStatus());
+        return dto;
     }
 
     private ProductWithImagesAndVariantsDTO convertToDTO(Product product) {
