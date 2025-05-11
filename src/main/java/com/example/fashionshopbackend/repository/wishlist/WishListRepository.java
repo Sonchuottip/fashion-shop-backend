@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.wishlist;
 
-import com.example.fashionshopbackend.entity.wishlist.WishList;
+import com.example.fashionshopbackend.entity.customer.WishList;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

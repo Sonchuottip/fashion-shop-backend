@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.controller.open;
 
-import com.example.fashionshopbackend.dto.contact.ContactRequest;
-import com.example.fashionshopbackend.dto.contact.ContactResponse;
+import com.example.fashionshopbackend.dto.common.ContactRequest;
+import com.example.fashionshopbackend.dto.common.ContactResponse;
 import com.example.fashionshopbackend.service.contact.ContactService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;

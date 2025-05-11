@@ -1,7 +1,8 @@
 package com.example.fashionshopbackend.controller.customer;
 
-import com.example.fashionshopbackend.dto.payment.PaymentRequest;
-import com.example.fashionshopbackend.dto.payment.PaymentResponse;
+import com.example.fashionshopbackend.dto.admin.AdminResponse;
+import com.example.fashionshopbackend.dto.customer.PaymentRequest;
+import com.example.fashionshopbackend.dto.customer.PaymentResponse;
 import com.example.fashionshopbackend.service.payment.PaymentService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -28,6 +29,18 @@ public class PaymentController {
         } catch (Exception e) {
             logger.error("Payment failed for order {}: {}", request.getOrderId(), e.getMessage());
             return ResponseEntity.badRequest().body(new PaymentResponse("Payment failed: " + e.getMessage(), null, null, "FAILED"));
+        }
+    }
+
+    @GetMapping("/payments/order/{orderId}")
+    public ResponseEntity<?> getPaymentByOrderId(@PathVariable Long orderId) {
+        try {
+            logger.debug("Fetching payment for order ID: {}", orderId);
+            PaymentResponse payment = paymentService.getPaymentByOrderId(orderId);
+            return ResponseEntity.ok(payment);
+        } catch (Exception e) {
+            logger.error("Error fetching payment for order ID {}: {}", orderId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching payment: " + e.getMessage()));
         }
     }
 }

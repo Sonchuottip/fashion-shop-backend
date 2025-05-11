@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.service.inventoryhistory;
 
-import com.example.fashionshopbackend.dto.inventoryhistory.InventoryHistoryDTO;
-import com.example.fashionshopbackend.entity.inventoryhistory.InventoryHistory;
+import com.example.fashionshopbackend.dto.inventory.InventoryHistoryDTO;
+import com.example.fashionshopbackend.entity.inventory.InventoryHistory;
 import com.example.fashionshopbackend.repository.inventoryhistory.InventoryHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

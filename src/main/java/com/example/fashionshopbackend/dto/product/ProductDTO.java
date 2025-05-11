@@ -11,4 +11,5 @@ public class ProductDTO {
     private Integer stock;
     private Integer categoryId;
     private String status;
+    private String imageUrl; // Thêm trường cho URL của ảnh chính
 }

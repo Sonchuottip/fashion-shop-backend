@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.Instant;
 
 @Entity
-@Table(name = "ProductVariants")
+@Table(name = "Product_Variants")
 @Data
 public class ProductVariant {
     @Id
@@ -31,6 +31,6 @@ public class ProductVariant {
     @Column(name = "Stock")
     private Integer stock;
 
-    @Column(name = "CreatedAt", insertable = false, updatable = false)
+    @Column(name = "Created_At", insertable = false, updatable = false)
     private Instant createdAt;
 }

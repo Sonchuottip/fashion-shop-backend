@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.controller.customer;
 
-import com.example.fashionshopbackend.dto.wishlist.WishListDTO;
+import com.example.fashionshopbackend.dto.customer.WishListDTO;
 import com.example.fashionshopbackend.service.wishlist.WishListService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

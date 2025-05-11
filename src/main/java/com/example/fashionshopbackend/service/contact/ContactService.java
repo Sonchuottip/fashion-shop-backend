@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.service.contact;
 
-import com.example.fashionshopbackend.dto.contact.ContactRequest;
-import com.example.fashionshopbackend.dto.contact.ContactResponse;
+import com.example.fashionshopbackend.dto.common.ContactRequest;
+import com.example.fashionshopbackend.dto.common.ContactResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;

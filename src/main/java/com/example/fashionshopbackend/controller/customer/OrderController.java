@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.controller.customer;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
-import com.example.fashionshopbackend.dto.order.OrderDTO;
+import com.example.fashionshopbackend.dto.customer.OrderDTO;
 import com.example.fashionshopbackend.service.order.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

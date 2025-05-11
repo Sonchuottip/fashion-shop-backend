@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.service.review;
 
-import com.example.fashionshopbackend.dto.review.ReviewDTO;
-import com.example.fashionshopbackend.entity.review.Review;
+import com.example.fashionshopbackend.dto.customer.ReviewDTO;
+import com.example.fashionshopbackend.entity.customer.Review;
 import com.example.fashionshopbackend.repository.review.ReviewRepository;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;

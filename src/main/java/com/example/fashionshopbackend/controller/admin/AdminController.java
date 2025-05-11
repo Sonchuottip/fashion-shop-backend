@@ -1,21 +1,27 @@
 package com.example.fashionshopbackend.controller.admin;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
-import com.example.fashionshopbackend.dto.adminlog.AdminLogDTO;
-import com.example.fashionshopbackend.dto.category.CategoryDTO;
-import com.example.fashionshopbackend.dto.coupon.CouponDTO;
-import com.example.fashionshopbackend.dto.inventoryhistory.InventoryHistoryDTO;
-import com.example.fashionshopbackend.dto.inventoryhistory.InventoryUpdateDTO;
+import com.example.fashionshopbackend.dto.admin.AdminLogDTO;
+import com.example.fashionshopbackend.dto.customer.OrderDTO;
+import com.example.fashionshopbackend.dto.customer.OrderUpdateDTO;
+import com.example.fashionshopbackend.dto.customer.PaymentResponse;
+import com.example.fashionshopbackend.dto.customer.PaymentUpdateRequest;
+import com.example.fashionshopbackend.dto.product.CategoryDTO;
+import com.example.fashionshopbackend.dto.common.CouponDTO;
+import com.example.fashionshopbackend.dto.inventory.InventoryHistoryDTO;
+import com.example.fashionshopbackend.dto.inventory.InventoryUpdateDTO;
 import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.dto.user.UserDTO;
-import com.example.fashionshopbackend.entity.coupon.Coupon;
+import com.example.fashionshopbackend.entity.common.Coupon;
 import com.example.fashionshopbackend.service.admin.CategoryService;
 import com.example.fashionshopbackend.service.admin.ProductService;
 import com.example.fashionshopbackend.service.admin.UserService;
 import com.example.fashionshopbackend.service.adminlog.AdminLogService;
 import com.example.fashionshopbackend.service.coupon.CouponService;
 import com.example.fashionshopbackend.service.inventoryhistory.InventoryHistoryService;
+import com.example.fashionshopbackend.service.order.OrderService;
+import com.example.fashionshopbackend.service.payment.PaymentService; // Thêm import
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +57,12 @@ public class AdminController {
     @Autowired
     private InventoryHistoryService inventoryHistoryService;
 
+    @Autowired
+    private PaymentService paymentService; // Thêm Autowired cho PaymentService
+
+    @Autowired
+    private OrderService orderService;
+
     @GetMapping("/categories")
     public ResponseEntity<?> getAllCategories() {
         try {
@@ -69,6 +81,7 @@ public class AdminController {
             logger.debug("Creating category: {}", dto.getName());
             categoryService.createCategory(dto);
             logger.info("Category created successfully: {}", dto.getName());
+            adminLogService.logAdminAction("Created category: " + dto.getName());
             return ResponseEntity.ok(new AdminResponse("Category created successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Error creating category: {}", e.getMessage());
@@ -85,6 +98,7 @@ public class AdminController {
             logger.debug("Updating category ID: {}", id);
             categoryService.updateCategory(id, dto);
             logger.info("Category updated successfully: ID {}", id);
+            adminLogService.logAdminAction("Updated category ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Category updated successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Category not found: {}", e.getMessage());
@@ -101,6 +115,7 @@ public class AdminController {
             logger.debug("Deleting category ID: {}", id);
             categoryService.deleteCategory(id);
             logger.info("Category deleted successfully: ID {}", id);
+            adminLogService.logAdminAction("Deleted category ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Category deleted successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Category not found: {}", e.getMessage());
@@ -136,11 +151,12 @@ public class AdminController {
     }
 
     @PostMapping("/products")
-    public ResponseEntity<?> createProduct(@Valid @RequestBody ProductWithImagesAndVariantsDTO dto) {
+    public ResponseEntity<?> createProduct(@Valid @ModelAttribute ProductWithImagesAndVariantsDTO dto) {
         try {
             logger.debug("Creating product with images and variants: {}", dto.getName());
             productService.createProductWithImagesAndVariants(dto);
             logger.info("Product, images, and variants created successfully: {}", dto.getName());
+            adminLogService.logAdminAction("Created product: " + dto.getName());
             return ResponseEntity.ok(new AdminResponse("Product, images, and variants created successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Error: {}", e.getMessage());
@@ -152,12 +168,13 @@ public class AdminController {
     }
 
     @PutMapping("/products/{id}")
-    public ResponseEntity<?> updateProduct(@PathVariable Integer id, @Valid @RequestBody ProductWithImagesAndVariantsDTO dto) {
+    public ResponseEntity<?> updateProduct(@PathVariable Integer id, @Valid @ModelAttribute ProductWithImagesAndVariantsDTO dto) {
         try {
             logger.debug("Updating product ID: {} with images and variants", id);
             dto.setProductId(id);
             productService.updateProductWithImagesAndVariants(dto);
             logger.info("Product, images, and variants updated successfully: ID {}", id);
+            adminLogService.logAdminAction("Updated product ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Product, images, and variants updated successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Product not found: {}", e.getMessage());
@@ -174,6 +191,7 @@ public class AdminController {
             logger.debug("Deleting product ID: {} with images and variants", id);
             productService.deleteProductWithImagesAndVariants(id);
             logger.info("Product, images, and variants deleted successfully: ID {}", id);
+            adminLogService.logAdminAction("Deleted product ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Product, images, and variants deleted successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Product not found: {}", e.getMessage());
@@ -202,6 +220,7 @@ public class AdminController {
             logger.debug("Creating coupon: {}", dto.getCode());
             Coupon coupon = couponService.createCoupon(dto);
             logger.info("Coupon created successfully: {}", coupon.getCode());
+            adminLogService.logAdminAction("Created coupon: " + coupon.getCode());
             return ResponseEntity.ok(new AdminResponse("Coupon created successfully with ID: " + coupon.getCouponId()));
         } catch (IllegalArgumentException e) {
             logger.error("Error creating coupon: {}", e.getMessage());
@@ -219,6 +238,7 @@ public class AdminController {
             dto.setCouponId(id);
             couponService.updateCoupon(dto);
             logger.info("Coupon updated successfully: ID {}", id);
+            adminLogService.logAdminAction("Updated coupon ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Coupon updated successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Coupon not found: {}", e.getMessage());
@@ -235,6 +255,7 @@ public class AdminController {
             logger.debug("Deleting coupon ID: {}", id);
             couponService.deleteCoupon(id);
             logger.info("Coupon deleted successfully: ID {}", id);
+            adminLogService.logAdminAction("Deleted coupon ID: " + id);
             return ResponseEntity.ok(new AdminResponse("Coupon deleted successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Coupon not found: {}", e.getMessage());
@@ -302,6 +323,7 @@ public class AdminController {
             logger.debug("Updating inventory for variant ID: {}, quantity: {}, reason: {}", variantId, dto.getQuantity(), dto.getReason());
             inventoryHistoryService.updateInventory(variantId, dto.getQuantity(), dto.getReason());
             logger.info("Inventory updated successfully for variant ID: {}", variantId);
+            adminLogService.logAdminAction("Updated inventory for variant ID: " + variantId + ", quantity: " + dto.getQuantity() + ", reason: " + dto.getReason());
             return ResponseEntity.ok(new AdminResponse("Inventory updated successfully"));
         } catch (IllegalArgumentException e) {
             logger.error("Error updating inventory: {}", e.getMessage());
@@ -309,6 +331,71 @@ public class AdminController {
         } catch (Exception e) {
             logger.error("Error updating inventory: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(new AdminResponse("Error updating inventory: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/payments/order/{orderId}")
+    public ResponseEntity<?> getPaymentByOrderId(@PathVariable Long orderId) {
+        try {
+            logger.debug("Fetching payment for order ID: {}", orderId);
+            PaymentResponse payment = paymentService.getPaymentByOrderId(orderId);
+            return ResponseEntity.ok(payment);
+        } catch (Exception e) {
+            logger.error("Error fetching payment for order ID {}: {}", orderId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching payment: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/payments")
+    public ResponseEntity<?> getAllPayments() {
+        try {
+            logger.debug("Fetching all payments");
+            List<PaymentResponse> payments = paymentService.getAllPayments();
+            return ResponseEntity.ok(payments);
+        } catch (Exception e) {
+            logger.error("Error fetching payments: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching payments: " + e.getMessage()));
+        }
+    }
+
+    // Thêm endpoint mới để cập nhật trạng thái thanh toán
+    @PostMapping("/payment/update/{paymentId}")
+    public ResponseEntity<?> updatePayment(@PathVariable Long paymentId, @Valid @RequestBody PaymentUpdateRequest request) {
+        try {
+            logger.debug("Updating payment ID: {}", paymentId);
+            PaymentResponse response = paymentService.updatePayment(paymentId, request);
+            logger.info("Payment updated successfully: ID {}, status: {}", paymentId, request.getPaymentStatus());
+            adminLogService.logAdminAction("Updated payment ID: " + paymentId + " to status: " + request.getPaymentStatus());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error updating payment ID {}: {}", paymentId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error updating payment: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/orders")
+    public ResponseEntity<?> getAllOrders() {
+        try {
+            logger.debug("Fetching all orders");
+            List<OrderDTO> orders = orderService.getAllOrders();
+            return ResponseEntity.ok(orders);
+        } catch (Exception e) {
+            logger.error("Error fetching orders: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error fetching orders: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/orders/update/{orderId}")
+    public ResponseEntity<?> updateOrder(@PathVariable Long orderId, @Valid @RequestBody OrderUpdateDTO dto) {
+        try {
+            logger.debug("Updating order ID: {}", orderId);
+            OrderDTO updatedOrder = orderService.updateOrder(orderId, dto);
+            logger.info("Order updated successfully: ID {}, status: {}", orderId, dto.getOrderStatus());
+            adminLogService.logAdminAction("Updated order ID: " + orderId + " to status: " + dto.getOrderStatus());
+            return ResponseEntity.ok(updatedOrder);
+        } catch (Exception e) {
+            logger.error("Error updating order ID {}: {}", orderId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(new AdminResponse("Error updating order: " + e.getMessage()));
         }
     }
 }

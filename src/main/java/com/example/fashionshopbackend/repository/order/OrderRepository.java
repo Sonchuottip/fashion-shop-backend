@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.order;
 
-import com.example.fashionshopbackend.entity.order.Order;
+import com.example.fashionshopbackend.entity.customer.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

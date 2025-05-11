@@ -1,19 +1,24 @@
 package com.example.fashionshopbackend.service.order;
 
-import com.example.fashionshopbackend.dto.order.OrderDTO;
-import com.example.fashionshopbackend.dto.order.OrderDetailDTO;
-import com.example.fashionshopbackend.dto.payment.PaymentDTO;
-import com.example.fashionshopbackend.dto.shipping.ShippingDTO;
-import com.example.fashionshopbackend.entity.order.Order;
-import com.example.fashionshopbackend.entity.order.OrderDetail;
-import com.example.fashionshopbackend.entity.payment.Payment;
-import com.example.fashionshopbackend.entity.shipping.Shipping;
+import com.example.fashionshopbackend.dto.common.ApplyCouponRequest;
+import com.example.fashionshopbackend.dto.common.ApplyCouponResponse;
+import com.example.fashionshopbackend.dto.customer.OrderDTO;
+import com.example.fashionshopbackend.dto.customer.OrderDetailDTO;
+import com.example.fashionshopbackend.dto.customer.OrderUpdateDTO;
+import com.example.fashionshopbackend.dto.customer.PaymentDTO;
+import com.example.fashionshopbackend.dto.common.ShippingDTO;
+import com.example.fashionshopbackend.entity.customer.Order;
+import com.example.fashionshopbackend.entity.customer.OrderDetail;
+import com.example.fashionshopbackend.entity.customer.Payment;
+import com.example.fashionshopbackend.entity.common.Shipping;
 import com.example.fashionshopbackend.repository.order.OrderDetailRepository;
 import com.example.fashionshopbackend.repository.order.OrderRepository;
 import com.example.fashionshopbackend.repository.payment.PaymentRepository;
 import com.example.fashionshopbackend.repository.shipping.ShippingRepository;
+import com.example.fashionshopbackend.service.coupon.CouponService;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +42,9 @@ public class OrderService {
     private ShippingRepository shippingRepository;
 
     @Autowired
+    private CouponService couponService;
+
+    @Autowired
     private JWTUtil jwtUtil;
 
     @Transactional
@@ -54,8 +62,25 @@ public class OrderService {
             orderDetailRepository.saveAll(orderDetails);
         }
 
+        // Áp dụng mã giảm giá nếu có couponCode
+        if (dto.getCouponCode() != null && !dto.getCouponCode().isEmpty()) {
+            ApplyCouponRequest couponRequest = new ApplyCouponRequest();
+            couponRequest.setOrderId(orderId);
+            couponRequest.setCouponCode(dto.getCouponCode());
+            ApplyCouponResponse couponResponse = couponService.applyCoupon(couponRequest);
+
+            // Cập nhật lại thông tin đơn hàng sau khi áp dụng mã giảm giá
+            order.setDiscountAmount(couponResponse.getDiscountAmount());
+            order.setTotalAmount(couponResponse.getTotalAmountAfterDiscount());
+            orderRepository.save(order);
+        }
+
         if (dto.getPayment() != null) {
             Payment payment = convertToPaymentEntity(dto.getPayment(), orderId);
+            // Đảm bảo amount được thiết lập
+            if (payment.getAmount() == null) {
+                payment.setAmount(order.getTotalAmount()); // Lấy totalAmount từ Order nếu amount không được cung cấp
+            }
             paymentRepository.save(payment);
         }
 
@@ -83,6 +108,12 @@ public class OrderService {
         return dto;
     }
 
+    public List<OrderDTO> getAllOrders() {
+        return orderRepository.findAll().stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
     public List<OrderDTO> getOrdersByUser() {
         Long userId = getCurrentUserId();
         return orderRepository.findByUserId(userId).stream()
@@ -100,6 +131,24 @@ public class OrderService {
         }
         order.setOrderStatus("Cancelled");
         orderRepository.save(order);
+    }
+
+    @Transactional
+    public OrderDTO updateOrder(Long orderId, OrderUpdateDTO dto) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+
+        order.setOrderStatus(dto.getOrderStatus());
+        order = orderRepository.save(order);
+
+        OrderDTO responseDto = convertToDTO(order);
+        responseDto.setOrderDetails(orderDetailRepository.findByOrderId(orderId).stream()
+                .map(this::convertToOrderDetailDTO)
+                .collect(Collectors.toList()));
+        paymentRepository.findByOrderId(orderId).ifPresent(payment -> responseDto.setPayment(convertToPaymentDTO(payment)));
+        shippingRepository.findByOrderId(orderId).ifPresent(shipping -> responseDto.setShipping(convertToShippingDTO(shipping)));
+
+        return responseDto;
     }
 
     private Long getCurrentUserId() {
@@ -170,6 +219,7 @@ public class OrderService {
         payment.setPaymentMethod(dto.getPaymentMethod());
         payment.setTransactionId(dto.getTransactionId());
         payment.setPaymentStatus(dto.getPaymentStatus());
+        payment.setAmount(dto.getAmount());
         return payment;
     }
 
@@ -180,6 +230,7 @@ public class OrderService {
         dto.setPaymentMethod(payment.getPaymentMethod());
         dto.setTransactionId(payment.getTransactionId());
         dto.setPaymentStatus(payment.getPaymentStatus());
+        dto.setAmount(payment.getAmount());
         return dto;
     }
 

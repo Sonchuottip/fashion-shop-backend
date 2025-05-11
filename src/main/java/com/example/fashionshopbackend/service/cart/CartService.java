@@ -1,12 +1,13 @@
 package com.example.fashionshopbackend.service.cart;
 
-import com.example.fashionshopbackend.dto.cart.CartDTO;
-import com.example.fashionshopbackend.entity.cart.Cart;
+import com.example.fashionshopbackend.dto.customer.CartDTO;
+import com.example.fashionshopbackend.entity.customer.Cart;
 import com.example.fashionshopbackend.repository.cart.CartRepository;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public class CartService {
         cartRepository.deleteById(cartId);
     }
 
+    @Transactional
     public void clearCart() {
         Long userId = getCurrentUserId();
         cartRepository.deleteByUserId(userId);

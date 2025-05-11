@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.service.admin;
 
-import com.example.fashionshopbackend.dto.category.CategoryDTO;
+import com.example.fashionshopbackend.dto.product.CategoryDTO;
 import com.example.fashionshopbackend.dto.product.ProductImageDTO;
 import com.example.fashionshopbackend.dto.product.ProductVariantDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
@@ -13,8 +13,14 @@ import com.example.fashionshopbackend.repository.product.ProductRepository;
 import com.example.fashionshopbackend.repository.product.ProductVariantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,7 +45,7 @@ public class ProductService {
 
     public ProductWithImagesAndVariantsDTO getProductWithImagesAndVariantsById(Integer id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm với ID: " + id));
         return convertToDTO(product);
     }
 
@@ -57,19 +63,41 @@ public class ProductService {
         return products.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
+    @Transactional
     public void createProductWithImagesAndVariants(ProductWithImagesAndVariantsDTO dto) {
+        // Chuyển DTO thành entity Product và lưu
         Product product = convertToEntity(dto);
         product = productRepository.save(product);
         final Integer productId = product.getProductId();
 
-        if (dto.getImages() != null) {
+        // Xử lý hình ảnh
+        if (dto.getImages() != null && !dto.getImages().isEmpty()) {
             List<ProductImage> images = dto.getImages().stream()
-                    .map(imageDto -> convertToImageEntity(imageDto, productId))
+                    .map(imageDto -> {
+                        ProductImage image = convertToImageEntity(imageDto, productId);
+                        if (imageDto.getFile() != null && !imageDto.getFile().isEmpty()) {
+                            try {
+                                // Lưu file vào thư mục static/image
+                                String uploadDir = "src/main/resources/static/images/";
+                                String fileName = System.currentTimeMillis() + "_" + imageDto.getFile().getOriginalFilename();
+                                Path filePath = Paths.get(uploadDir + fileName);
+                                Files.createDirectories(filePath.getParent());
+                                Files.write(filePath, imageDto.getFile().getBytes());
+
+                                // Cập nhật imageUrl với đường dẫn tương đối
+                                image.setImageUrl("/images/" + fileName);
+                            } catch (IOException e) {
+                                throw new RuntimeException("Lỗi khi lưu hình ảnh: " + e.getMessage(), e);
+                            }
+                        }
+                        return image;
+                    })
                     .collect(Collectors.toList());
             productImageRepository.saveAll(images);
         }
 
-        if (dto.getVariants() != null) {
+        // Xử lý biến thể
+        if (dto.getVariants() != null && !dto.getVariants().isEmpty()) {
             List<ProductVariant> variants = dto.getVariants().stream()
                     .map(variantDto -> convertToVariantEntity(variantDto, productId))
                     .collect(Collectors.toList());
@@ -77,9 +105,13 @@ public class ProductService {
         }
     }
 
+    @Transactional
     public void updateProductWithImagesAndVariants(ProductWithImagesAndVariantsDTO dto) {
+        // Tìm sản phẩm
         Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + dto.getProductId()));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm với ID: " + dto.getProductId()));
+
+        // Cập nhật thông tin sản phẩm
         product.setName(dto.getName());
         product.setDescription(dto.getDescription());
         product.setPrice(dto.getPrice());
@@ -88,26 +120,83 @@ public class ProductService {
         product.setStatus(dto.getStatus());
         productRepository.save(product);
 
+        // Xử lý hình ảnh
         if (dto.getImages() != null) {
+            // Xóa hình ảnh cũ và tệp liên quan
+            List<ProductImage> oldImages = productImageRepository.findByProductId(dto.getProductId());
+            for (ProductImage oldImage : oldImages) {
+                try {
+                    if (oldImage.getImageUrl() != null) {
+                        Path oldFilePath = Paths.get("src/main/resources/static" + oldImage.getImageUrl());
+                        Files.deleteIfExists(oldFilePath);
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("Lỗi khi xóa hình ảnh cũ: " + e.getMessage(), e);
+                }
+            }
             productImageRepository.deleteByProductId(dto.getProductId());
-            List<ProductImage> images = dto.getImages().stream()
-                    .map(imageDto -> convertToImageEntity(imageDto, dto.getProductId()))
-                    .collect(Collectors.toList());
-            productImageRepository.saveAll(images);
+
+            // Lưu hình ảnh mới
+            if (!dto.getImages().isEmpty()) {
+                List<ProductImage> images = dto.getImages().stream()
+                        .map(imageDto -> {
+                            ProductImage image = convertToImageEntity(imageDto, dto.getProductId());
+                            if (imageDto.getFile() != null && !imageDto.getFile().isEmpty()) {
+                                try {
+                                    // Lưu file mới
+                                    String uploadDir = "src/main/resources/static/images/";
+                                    String fileName = System.currentTimeMillis() + "_" + imageDto.getFile().getOriginalFilename();
+                                    Path filePath = Paths.get(uploadDir + fileName);
+                                    Files.createDirectories(filePath.getParent());
+                                    Files.write(filePath, imageDto.getFile().getBytes());
+                                    image.setImageUrl("/images/" + fileName);
+                                } catch (IOException e) {
+                                    throw new RuntimeException("Lỗi khi lưu hình ảnh: " + e.getMessage(), e);
+                                }
+                            }
+                            return image;
+                        })
+                        .collect(Collectors.toList());
+                productImageRepository.saveAll(images);
+            }
         }
 
+        // Xử lý biến thể
         if (dto.getVariants() != null) {
             productVariantRepository.deleteByProductId(dto.getProductId());
-            List<ProductVariant> variants = dto.getVariants().stream()
-                    .map(variantDto -> convertToVariantEntity(variantDto, dto.getProductId()))
-                    .collect(Collectors.toList());
-            productVariantRepository.saveAll(variants);
+            if (!dto.getVariants().isEmpty()) {
+                List<ProductVariant> variants = dto.getVariants().stream()
+                        .map(variantDto -> convertToVariantEntity(variantDto, dto.getProductId()))
+                        .collect(Collectors.toList());
+                productVariantRepository.saveAll(variants);
+            }
         }
     }
 
+    @Transactional
     public void deleteProductWithImagesAndVariants(Integer id) {
+        // Kiểm tra sản phẩm có tồn tại
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sản phẩm với ID: " + id));
+
+        // Xóa hình ảnh và tệp liên quan
+        List<ProductImage> images = productImageRepository.findByProductId(id);
+        for (ProductImage image : images) {
+            try {
+                if (image.getImageUrl() != null) {
+                    Path filePath = Paths.get("src/main/resources/static" + image.getImageUrl());
+                    Files.deleteIfExists(filePath);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Lỗi khi xóa tệp hình ảnh: " + e.getMessage(), e);
+            }
+        }
         productImageRepository.deleteByProductId(id);
+
+        // Xóa biến thể
         productVariantRepository.deleteByProductId(id);
+
+        // Xóa sản phẩm
         productRepository.deleteById(id);
     }
 
@@ -120,6 +209,11 @@ public class ProductService {
         dto.setStock(product.getStock());
         dto.setCategoryId(product.getCategoryId());
         dto.setStatus(product.getStatus());
+
+        // Lấy ảnh chính (isPrimary = true) cho sản phẩm
+        Optional<ProductImage> primaryImage = productImageRepository.findByProductIdAndIsPrimary(product.getProductId(), true);
+        primaryImage.ifPresent(image -> dto.setImageUrl(image.getImageUrl()));
+
         return dto;
     }
 

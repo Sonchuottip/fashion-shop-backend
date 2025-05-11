@@ -1,14 +1,14 @@
 package com.example.fashionshopbackend.service.wishlist;
 
-import com.example.fashionshopbackend.dto.wishlist.WishListDTO;
-import com.example.fashionshopbackend.entity.wishlist.WishList;
+import com.example.fashionshopbackend.dto.customer.WishListDTO;
+import com.example.fashionshopbackend.entity.customer.WishList;
 import com.example.fashionshopbackend.repository.wishlist.WishListRepository;
 import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +41,7 @@ public class WishListService {
         return convertToDTO(wishList);
     }
 
+    @Transactional
     public void removeFromWishList(Long productId) {
         Long userId = getCurrentUserId();
         if (wishListRepository.findByUserIdAndProductId(userId, productId).isEmpty()) {

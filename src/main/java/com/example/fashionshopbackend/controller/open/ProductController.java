@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.controller.open;
 
 import com.example.fashionshopbackend.dto.admin.AdminResponse;
-import com.example.fashionshopbackend.dto.category.CategoryDTO;
+import com.example.fashionshopbackend.dto.product.CategoryDTO;
 import com.example.fashionshopbackend.dto.product.ProductDTO;
 import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.service.admin.ProductService;

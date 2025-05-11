@@ -1,7 +1,7 @@
 package com.example.fashionshopbackend.service.admin;
 
-import com.example.fashionshopbackend.dto.category.CategoryDTO;
-import com.example.fashionshopbackend.entity.category.Category;
+import com.example.fashionshopbackend.dto.product.CategoryDTO;
+import com.example.fashionshopbackend.entity.product.Category;
 import com.example.fashionshopbackend.repository.category.CategoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

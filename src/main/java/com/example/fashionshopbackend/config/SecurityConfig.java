@@ -40,7 +40,7 @@ public class SecurityConfig {
     private UserRepository userRepository;
 
     @Autowired
-    private RSAKey rsaKey; // Inject RSAKey từ RsaKeyConfig
+    private RSAKey rsaKey;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -56,6 +56,11 @@ public class SecurityConfig {
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/auth/oauth2/**").permitAll()
+                        // Thêm các endpoint mới vào danh sách công khai
+                        .requestMatchers("/api/contact/**",
+                                "/api/products/**",
+                                "/api/reviews/**",
+                                "/api/coupons/**").permitAll()
                         // Yêu cầu xác thực cho các endpoint khác trong /api/auth/**
                         .requestMatchers("/api/auth/logout",
                                 "/api/auth/profile",

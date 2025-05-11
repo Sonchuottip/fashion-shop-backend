@@ -1,9 +1,8 @@
 package com.example.fashionshopbackend.controller.admin;
 
-import com.example.fashionshopbackend.dto.category.CategoryDTO;
-import com.example.fashionshopbackend.dto.coupon.CouponDTO;
+import com.example.fashionshopbackend.dto.product.CategoryDTO;
+import com.example.fashionshopbackend.dto.common.CouponDTO;
 import com.example.fashionshopbackend.dto.product.ProductDTO;
-import com.example.fashionshopbackend.dto.product.ProductWithImagesAndVariantsDTO;
 import com.example.fashionshopbackend.dto.user.UserDTO;
 import com.example.fashionshopbackend.service.admin.CategoryService;
 import com.example.fashionshopbackend.service.admin.ProductService;
@@ -17,7 +16,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 

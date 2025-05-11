@@ -42,10 +42,15 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
         String requestURI = request.getRequestURI();
         logger.debug("Processing request URI: {}", requestURI);
 
+        // Bỏ qua xác thực cho các endpoint công khai
         if (requestURI.equals("/api/auth/login") ||
                 requestURI.equals("/api/auth/register") ||
                 requestURI.equals("/api/auth/forgot-password") ||
-                requestURI.equals("/api/auth/reset-password")) {
+                requestURI.equals("/api/auth/reset-password") ||
+                requestURI.startsWith("/api/contact") ||
+                requestURI.startsWith("/api/products") ||
+                requestURI.startsWith("/api/reviews") ||
+                requestURI.startsWith("/api/coupons")) {
             logger.debug("Skipping JWT authentication for URI: {}", requestURI);
             filterChain.doFilter(request, response);
             return;

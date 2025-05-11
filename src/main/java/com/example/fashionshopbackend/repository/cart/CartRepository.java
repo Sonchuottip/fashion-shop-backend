@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.cart;
 
-import com.example.fashionshopbackend.entity.cart.Cart;
+import com.example.fashionshopbackend.entity.customer.Cart;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

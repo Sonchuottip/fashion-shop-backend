@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.coupon;
 
-import com.example.fashionshopbackend.entity.coupon.Coupon;
+import com.example.fashionshopbackend.entity.common.Coupon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.inventoryhistory;
 
-import com.example.fashionshopbackend.entity.inventoryhistory.InventoryHistory;
+import com.example.fashionshopbackend.entity.inventory.InventoryHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

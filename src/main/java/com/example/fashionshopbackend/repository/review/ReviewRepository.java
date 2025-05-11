@@ -1,6 +1,6 @@
 package com.example.fashionshopbackend.repository.review;
 
-import com.example.fashionshopbackend.entity.review.Review;
+import com.example.fashionshopbackend.entity.customer.Review;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

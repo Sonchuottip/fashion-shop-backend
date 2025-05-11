@@ -5,7 +5,7 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "AdminLogs")
+@Table(name = "admin_logs")
 @Getter
 @Setter
 @NoArgsConstructor
