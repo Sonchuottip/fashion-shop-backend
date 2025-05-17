@@ -34,7 +34,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasAuthority('Admin')")
+@PreAuthorize("hasAuthority('admin')")
 public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);

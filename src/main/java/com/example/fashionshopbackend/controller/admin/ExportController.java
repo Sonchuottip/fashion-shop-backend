@@ -24,7 +24,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/export")
-@PreAuthorize("hasAuthority('Admin')")
+@PreAuthorize("hasAuthority('admin')")
 public class ExportController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExportController.class);

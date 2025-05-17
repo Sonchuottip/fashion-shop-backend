@@ -21,6 +21,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -42,12 +47,27 @@ public class SecurityConfig {
     @Autowired
     private RSAKey rsaKey;
 
+    // Định nghĩa CorsConfigurationSource
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // Khớp với origin của frontend
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // Cache pre-flight trong 1 giờ
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Define các endpoint công khai không yêu cầu xác thực
         RequestMatcher permitAllMatcher = new AntPathRequestMatcher("/api/auth/{register|login|forgot-password|reset-password|oauth2/**}");
 
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Áp dụng CORS trước các filter
                 .csrf(csrf -> csrf.disable()) // Đảm bảo CSRF được vô hiệu hóa
                 .authorizeHttpRequests(auth -> auth
                         // Chỉ cho phép công khai các endpoint cần thiết
@@ -67,7 +87,7 @@ public class SecurityConfig {
                                 "/api/auth/profile/update",
                                 "/api/auth/change-password").authenticated()
                         // Yêu cầu vai trò Admin cho các endpoint admin
-                        .requestMatchers("/api/admin/**").hasAuthority("Admin")
+                        .requestMatchers("/api/admin/**").hasAuthority("admin")
                         // Tất cả các yêu cầu khác phải được xác thực
                         .anyRequest().authenticated()
                 )

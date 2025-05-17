@@ -14,10 +14,10 @@ public class AdminLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "LogID")
+    @Column(name = "Log_ID")
     private Long logId;
 
-    @Column(name = "AdminID", nullable = false)
+    @Column(name = "Admin_ID", nullable = false)
     private Long adminId;
 
     @Column(name = "Action", nullable = false)

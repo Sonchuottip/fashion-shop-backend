@@ -137,7 +137,7 @@ public class PaymentService {
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("Admin"));
+        boolean isAdmin = authentication.getAuthorities().contains(new SimpleGrantedAuthority("admin"));
 
         if (!isAdmin && !order.getUserId().equals(userId)) {
             throw new RuntimeException("Unauthorized access to order");

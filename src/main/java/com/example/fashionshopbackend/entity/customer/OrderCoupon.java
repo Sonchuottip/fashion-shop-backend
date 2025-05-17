@@ -13,12 +13,12 @@ public class OrderCoupon {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "OrderCouponID")
+    @Column(name = "Order_Coupon_ID")
     private Long orderCouponId;
 
-    @Column(name = "OrderID", nullable = false)
+    @Column(name = "Order_ID", nullable = false)
     private Long orderId;
 
-    @Column(name = "CouponID", nullable = false)
+    @Column(name = "Coupon_ID", nullable = false)
     private Long couponId;
 }

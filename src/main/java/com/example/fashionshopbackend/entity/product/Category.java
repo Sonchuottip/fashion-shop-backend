@@ -10,7 +10,7 @@ import java.time.OffsetDateTime;
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "CategoryID")
+    @Column(name = "Category_ID")
     private Integer id;
 
     @Column(name = "Name", nullable = false, unique = true, length = 100)

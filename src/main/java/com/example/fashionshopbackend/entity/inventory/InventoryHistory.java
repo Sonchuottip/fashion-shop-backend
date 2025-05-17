@@ -14,10 +14,10 @@ public class InventoryHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "HistoryID")
+    @Column(name = "History_ID")
     private Long historyId;
 
-    @Column(name = "VariantID", nullable = false)
+    @Column(name = "Variant_ID", nullable = false)
     private Long variantId;
 
     @Column(name = "Change_Type", nullable = false)

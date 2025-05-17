@@ -15,16 +15,16 @@ public class Payment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "PaymentID")
+    @Column(name = "Payment_ID")
     private Long paymentId;
 
-    @Column(name = "OrderID", nullable = false)
+    @Column(name = "Order_ID", nullable = false)
     private Long orderId;
 
     @Column(name = "Payment_Method", length = 50, nullable = false)
     private String paymentMethod; // "ZALOPAY" hoặc "COD"
 
-    @Column(name = "TransactionID", length = 100)
+    @Column(name = "Transaction_ID", length = 100)
     private String transactionId; // ID giao dịch từ ZaloPay
 
     @Column(name = "Payment_Status", length = 50)

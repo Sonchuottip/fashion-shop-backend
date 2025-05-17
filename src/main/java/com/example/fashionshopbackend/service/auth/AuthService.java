@@ -3,8 +3,10 @@ package com.example.fashionshopbackend.service.auth;
 import com.example.fashionshopbackend.dto.auth.*;
 import com.example.fashionshopbackend.entity.auth.User;
 import com.example.fashionshopbackend.repository.user.UserRepository;
+import com.example.fashionshopbackend.util.jwt.JWTUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,9 @@ public class AuthService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private JWTUtil jwtUtil;
+
     // Lưu tạm OTP (sử dụng HashMap, có thể thay bằng Redis)
     private Map<String, String> otpStore = new HashMap<>();
     private static final long OTP_EXPIRY_TIME = 10 * 60 * 1000; // 10 phút
@@ -44,21 +49,32 @@ public class AuthService {
         user.setPasswordHash(encodedPassword);
         user.setFullName(authRequest.getFullName());
         System.out.println("Full Name: " + authRequest.getFullName());
-        user.setRole("Customer");
+        user.setRole("customer");
         user.setProvider("local");
         System.out.println("Saved user: " + user.getEmail() + ", id: " + user.getUserId());
         return userRepository.save(user);
     }
 
-    public boolean changePassword(ChangePasswordRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        System.out.println("User found: " + user.getEmail());
-        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Old password is incorrect");
+    public boolean changePassword(ChangePasswordRequest request, String token) {
+        // Kiểm tra trạng thái đăng nhập
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("Người dùng chưa đăng nhập");
         }
 
+        // Lấy userId từ token
+        Long userId;
+        try {
+            userId = jwtUtil.getUserIdFromToken(token);
+        } catch (Exception e) {
+            throw new IllegalStateException("Không thể lấy userId từ token: " + e.getMessage());
+        }
+
+        // Tìm người dùng bằng userId
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+        // Cập nhật mật khẩu
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         return true;

@@ -10,10 +10,10 @@ import java.time.Instant;
 public class ProductVariant {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "VariantID")
+    @Column(name = "Variant_ID")
     private Integer variantId;
 
-    @Column(name = "ProductID", nullable = false)
+    @Column(name = "Product_ID", nullable = false)
     private Integer productId;
 
     @Column(name = "SKU", unique = true, nullable = false, length = 50)

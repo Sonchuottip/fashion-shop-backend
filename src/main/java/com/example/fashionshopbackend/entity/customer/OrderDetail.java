@@ -16,10 +16,10 @@ public class OrderDetail {
     @Column(name = "OrderDetailID")
     private Long orderDetailId;
 
-    @Column(name = "OrderID", nullable = false)
+    @Column(name = "Order_ID", nullable = false)
     private Long orderId;
 
-    @Column(name = "VariantID", nullable = false)
+    @Column(name = "Variant_ID", nullable = false)
     private Long variantId;
 
     @Column(name = "Quantity", nullable = false)

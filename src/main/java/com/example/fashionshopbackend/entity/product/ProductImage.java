@@ -11,13 +11,13 @@ import java.time.OffsetDateTime;
 public class ProductImage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "ImageID")
+    @Column(name = "Image_ID")
     private Integer imageId;
 
-    @Column(name = "ProductID", nullable = false)
+    @Column(name = "Product_ID", nullable = false)
     private Integer productId;
 
-    @Column(name = "ImageURL", nullable = false, length = 255)
+    @Column(name = "Image_URL", nullable = false, length = 255)
     private String imageUrl;
 
     @Column(name = "Is_Primary")

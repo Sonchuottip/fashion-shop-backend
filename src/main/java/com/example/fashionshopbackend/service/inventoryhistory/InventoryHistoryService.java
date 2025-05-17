@@ -39,9 +39,9 @@ public class InventoryHistoryService {
 
         int currentQuantity = 0;
         for (InventoryHistory history : histories) {
-            if ("Add".equalsIgnoreCase(history.getChangeType())) {
+            if ("add".equalsIgnoreCase(history.getChangeType())) {
                 currentQuantity += history.getQuantity();
-            } else if ("Remove".equalsIgnoreCase(history.getChangeType())) {
+            } else if ("remove".equalsIgnoreCase(history.getChangeType())) {
                 currentQuantity -= history.getQuantity();
             } else {
                 logger.warn("Invalid ChangeType '{}' for history ID: {}",
@@ -69,7 +69,7 @@ public class InventoryHistoryService {
         }
 
         // Xác định ChangeType và số lượng tuyệt đối
-        String changeType = quantity > 0 ? "Add" : "Remove";
+        String changeType = quantity > 0 ? "add" : "remove";
         int absoluteQuantity = Math.abs(quantity);
 
         // Kiểm tra đủ kho nếu giảm

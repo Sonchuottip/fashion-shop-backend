@@ -17,7 +17,7 @@ public class User {
     @Column(name = "UserID")
     private Long userId;
 
-    @Column(nullable = false, length = 100,name = "fullname")
+    @Column(nullable = false, length = 100,name = "full_name")
     private String fullName;
 
     @Column(nullable = false, unique = true, length = 100)
@@ -33,7 +33,7 @@ public class User {
     private String address;
 
     @Column(length = 20)
-    private String role = "Customer";
+    private String role = "customer";
 
     @Column(length = 20)
     private String provider = "local";

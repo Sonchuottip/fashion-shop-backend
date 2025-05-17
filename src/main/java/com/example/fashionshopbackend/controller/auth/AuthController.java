@@ -128,23 +128,30 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        logger.debug("Received change password request for user: {}",
-                SecurityContextHolder.getContext().getAuthentication().getName());
+    public ResponseEntity<?> changePassword(@Valid @RequestBody ChangePasswordRequest request,
+                                            @RequestHeader("Authorization") String authorizationHeader) {
+        logger.debug("Nhận yêu cầu đổi mật khẩu");
         try {
-            authService.changePassword(request);
-            logger.info("Password changed successfully for user: {}",
-                    SecurityContextHolder.getContext().getAuthentication().getName());
-            return ResponseEntity.ok(new AuthResponse("Password changed successfully", null));
-        } catch (IllegalArgumentException e) {
-            logger.error("Invalid input: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse("Invalid input: " + e.getMessage(), null));
+            // Kiểm tra trạng thái đăng nhập
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Người dùng chưa được xác thực");
+                return ResponseEntity.status(403).body(new AuthResponse("Người dùng chưa được xác thực", null));
+            }
+
+            // Lấy token từ header Authorization
+            String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
+            logger.debug("Token received: {}", token);
+
+            authService.changePassword(request, token);
+            logger.info("Đổi mật khẩu thành công cho người dùng");
+            return ResponseEntity.ok(new AuthResponse("Đổi mật khẩu thành công", null));
         } catch (IllegalStateException e) {
-            logger.error("Authentication failed: {}", e.getMessage());
-            return ResponseEntity.status(403).body(new AuthResponse("Authentication failed: " + e.getMessage(), null));
+            logger.error("Xác thực thất bại: {}", e.getMessage());
+            return ResponseEntity.status(403).body(new AuthResponse("Xác thực thất bại: " + e.getMessage(), null));
         } catch (Exception e) {
-            logger.error("Unexpected error during password change: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse("An error occurred: " + e.getMessage(), null));
+            logger.error("Lỗi khi đổi mật khẩu: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new AuthResponse("Lỗi khi đổi mật khẩu: " + e.getMessage(), null));
         }
     }
 
@@ -174,20 +181,8 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null && authentication.isAuthenticated()) {
-                SecurityContextHolder.clearContext();
-                logger.info("Đăng xuất thành công cho người dùng: {}", authentication.getName());
-                return ResponseEntity.ok(new AuthResponse("Đăng xuất thành công", null));
-            } else {
-                logger.warn("Không tìm thấy phiên hoạt động để đăng xuất");
-                return ResponseEntity.badRequest().body(new AuthResponse("Không có phiên hoạt động", null));
-            }
-        } catch (Exception e) {
-            logger.error("Đăng xuất thất bại: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(new AuthResponse("Đăng xuất thất bại: " + e.getMessage(), null));
-        }
+        // Chỉ trả về OK, client chịu trách nhiệm xóa token
+        return ResponseEntity.ok(new AuthResponse("Đăng xuất thành công", null));
     }
 
     @GetMapping("/profile")

@@ -26,10 +26,10 @@ public class Product {
     @Column(name = "stock")
     private Integer stock;
 
-    @Column(name = "categoryid")
+    @Column(name = "category_id")
     private Integer categoryId;
 
-    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'Active'")
+    @Column(name = "status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'active'")
     private String status;
 
     @Column(name = "created_at", nullable = false)
@@ -43,7 +43,7 @@ public class Product {
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
         if (this.status == null) {
-            this.status = "Active";
+            this.status = "active";
         }
     }
 
