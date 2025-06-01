@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - 'POSTGRES_DB=fashiondb'
+      - 'POSTGRES_PASSWORD=sonchuottip03032004'
+      - 'POSTGRES_USER=postgres'
+    ports:
+      - '5432:5432'
+
