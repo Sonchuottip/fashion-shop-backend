@@ -25,7 +25,7 @@ public class ProductController {
     // Lấy danh sách khuyến mãi với danh mục
     @GetMapping("/promotions/categories")
     public List<PromotionDTO> getPromotionsByCategories() {
-        return promotionService.getPromotionsByCategories();
+        return promotionService.getPromotionsByCategories   ();
     }
 
     // Hiển thị tất cả sản phẩm khuyến mãi

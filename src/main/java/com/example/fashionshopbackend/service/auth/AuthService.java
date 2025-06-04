@@ -1,6 +1,7 @@
 package com.example.fashionshopbackend.service.auth;
 
 import com.example.fashionshopbackend.dto.auth.*;
+import com.example.fashionshopbackend.entity.auth.RefreshToken;
 import com.example.fashionshopbackend.entity.auth.User;
 import com.example.fashionshopbackend.entity.auth.UserProfile;
 import com.example.fashionshopbackend.repository.UserProfileRepository;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -23,11 +25,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.text.ParseException;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -63,7 +64,10 @@ public class AuthService {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
-    public AuthResponse login(String email, String password) {
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
+    public Map<String, Object> login(String email, String password) {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, password)
@@ -74,23 +78,53 @@ public class AuthService {
                         logger.error("User not found for email: {}", email);
                         return new RuntimeException("User not found");
                     });
-            String jwt;
-            try {
-                jwt = jwtUtil.generateToken(user.getId(),user.getEmail(),user.getProvider());
-                logger.info("JWT token: {} for user:{}", jwt,user.getEmail());
-            } catch (JOSEException e) {
-                logger.error("Failed to generate JWT for user {}: {}", email, e.getMessage());
-                return new AuthResponse("Failed to generate token", null);
-            }
+
+            String accessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
+            String refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
             logger.info("Login successful for user: {}", email);
-            return new AuthResponse("Login successful", jwt);
-        } catch (BadCredentialsException e){
+            Map<String, Object> response = new HashMap<>();
+            response.put("authResponse", new AuthResponse("Login successful", accessToken));
+            response.put("refreshToken", refreshToken);
+            return response;
+        } catch (BadCredentialsException e) {
             logger.warn("Invalid credentials for email: {}", email);
-            return new AuthResponse("Invalid email or password", null);
+            return Map.of("authResponse", new AuthResponse("Invalid email or password", null));
+        } catch (JOSEException e) {
+            logger.error("Failed to generate token for user {}: {}", email, e.getMessage());
+            return Map.of("authResponse", new AuthResponse("Failed to generate token", null));
         } catch (Exception e) {
-            logger.error("Login failed for email: {} - {}", email, e.getMessage());
-            return new AuthResponse("Login failed: " + e.getMessage(), null);
+            logger.error("Login failed for email {}: {}", email, e.getMessage());
+            return Map.of("authResponse", new AuthResponse("Login failed: " + e.getMessage(), null));
+        }
+    }
+
+    public AuthResponse refreshToken(String refreshToken) {
+        try {
+            if (!refreshTokenService.validateRefreshToken(refreshToken)) {
+                logger.warn("Invalid or expired refresh token");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+            }
+
+            RefreshToken tokenEntity = refreshTokenService.findByToken(refreshToken)
+                    .orElseThrow(() -> {
+                        logger.error("Refresh token not found");
+                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not found");
+                    });
+
+            User user = userRepository.findById(tokenEntity.getUserId())
+                    .orElseThrow(() -> {
+                        logger.error("User not found for userId: {}", tokenEntity.getUserId());
+                        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found");
+                    });
+
+            String newAccessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
+            logger.info("Generated new access token for userId: {}", user.getId());
+
+            return new AuthResponse("Access token refreshed", newAccessToken);
+        } catch (JOSEException | ParseException e) {
+            logger.error("Error processing refresh token: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token", e);
         }
     }
 
@@ -203,34 +237,28 @@ public class AuthService {
 
     public AuthResponse logout() {
         try {
-            // Lấy thông tin người dùng hiện tại từ SecurityContext
             String email = SecurityContextHolder.getContext().getAuthentication().getName();
             if (email == null || "anonymousUser".equals(email)) {
-                logger.warn("Không tìm thấy phiên hợp lệ để đăng xuất");
-                return new AuthResponse("Không có phiên hợp lệ để đăng xuất", null);
+                logger.warn("No valid session found for logout");
+                return new AuthResponse("No valid session to logout", null);
             }
 
-            // Tìm user dựa trên email
-            Optional<User> userOptional = userRepository.findByEmail(email);
-            if (userOptional.isEmpty()) {
-                logger.error("Không tìm thấy người dùng với email: {}", email);
-                return new AuthResponse("Không tìm thấy người dùng", null);
-            }
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> {
+                        logger.error("User not found for email: {}", email);
+                        return new RuntimeException("User not found");
+                    });
 
-            User user = userOptional.get();
             long userId = user.getId();
-
-            // Xóa tất cả token liên quan đến userId bằng TokenService
             tokenService.revokeToken(String.valueOf(userId));
-            logger.info("Đã xóa token cho người dùng: {}", email);
-
-            // Xóa SecurityContext
+            refreshTokenService.revokeRefreshToken(userId);
             SecurityContextHolder.clearContext();
-            logger.info("Đăng xuất thành công cho người dùng: {}", email);
-            return new AuthResponse("Đăng xuất thành công", null);
+
+            logger.info("Logout successful for user: {}", email);
+            return new AuthResponse("Logout successful", null);
         } catch (Exception e) {
-            logger.error("Đăng xuất thất bại: {}", e.getMessage(), e);
-            return new AuthResponse("Đăng xuất thất bại: " + e.getMessage(), null);
+            logger.error("Logout failed: {}", e.getMessage(), e);
+            return new AuthResponse("Logout failed: " + e.getMessage(), null);
         }
     }
 

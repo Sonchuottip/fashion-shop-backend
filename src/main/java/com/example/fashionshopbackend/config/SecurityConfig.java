@@ -5,9 +5,11 @@ import com.example.fashionshopbackend.entity.auth.UserProfile;
 import com.example.fashionshopbackend.repository.UserProfileRepository;
 import com.example.fashionshopbackend.repository.UserRepository;
 import com.example.fashionshopbackend.service.auth.CustomUserDetailsService;
+import com.example.fashionshopbackend.service.auth.RefreshTokenService;
 import com.example.fashionshopbackend.util.JWTAuthenticationFilter;
 import com.example.fashionshopbackend.util.JWTUtil;
 import com.nimbusds.jose.JOSEException;
+import jakarta.servlet.http.Cookie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -57,6 +58,9 @@ public class SecurityConfig {
     @Autowired
     private UserProfileRepository userProfileRepository;
 
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
@@ -84,6 +88,7 @@ public class SecurityConfig {
                                 "/.well-known/**",
                                 "/api/auth/register",
                                 "/api/auth/login",
+                                "/api/auth/refresh-token",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
                                 "/api/store/**"
@@ -106,7 +111,6 @@ public class SecurityConfig {
                             OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
                             String email = oauth2User.getAttribute("email");
 
-                            // Lấy provider từ OAuth2AuthenticationToken
                             String provider = ((org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken) authentication)
                                     .getAuthorizedClientRegistrationId();
                             String providerId = provider.equals("google") ? oauth2User.getAttribute("sub") : oauth2User.getAttribute("id");
@@ -116,7 +120,6 @@ public class SecurityConfig {
                                 throw new IllegalStateException("Email not found in OAuth2 user attributes");
                             }
 
-                            // Tạo người dùng nếu chưa tồn tại
                             User user = userRepository.findByEmail(email).orElseGet(() -> {
                                 logger.info("Creating new user with email: {} for provider: {}", email, provider);
                                 User newUser = new User();
@@ -139,14 +142,29 @@ public class SecurityConfig {
                                 return newUser;
                             });
 
-                            String token = null;
+                            String accessToken = null;
                             try {
-                                token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
+                                accessToken = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole());
                             } catch (JOSEException e) {
                                 throw new RuntimeException(e);
                             }
+                            String refreshToken = null;
+                            try {
+                                refreshToken = refreshTokenService.createRefreshToken(user.getId());
+                            } catch (JOSEException e) {
+                                throw new RuntimeException(e);
+                            }
+
+                            Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
+                            refreshCookie.setHttpOnly(true);
+                            refreshCookie.setSecure(true);
+                            refreshCookie.setPath("/api/auth");
+                            refreshCookie.setMaxAge(604800);
+                            refreshCookie.setAttribute("SameSite", "Strict");
+                            response.addCookie(refreshCookie);
+
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"token\": \"" + token + "\", \"user\": {\"email\": \"" + user.getEmail() + "\", \"role\": \"" + user.getRole() + "\"}}");
+                            response.getWriter().write("{\"message\": \"OAuth2 login successful\", \"token\": \"" + accessToken + "\"}");
                         })
                         .failureHandler((request, response, exception) -> {
                             logger.error("OAuth2 authentication failed: {}", exception.getMessage(), exception);
@@ -156,7 +174,6 @@ public class SecurityConfig {
                         })
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -27,7 +27,7 @@ public class JWTUtil {
     private Long expiration;
 
     @Value("${jwt.secret}")
-    private String secret; // Khóa bí mật để ký JWS (cấu hình trong application.properties)
+    private String secret;
 
     @Autowired
     private TokenService tokenService;
@@ -37,6 +37,7 @@ public class JWTUtil {
                 .subject(email)
                 .claim("userId", userId)
                 .claim("role", role)
+                .claim("type", "access")
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + expiration * 1000))
                 .build();
@@ -46,9 +47,26 @@ public class JWTUtil {
         signedJWT.sign(new MACSigner(secret));
 
         String token = signedJWT.serialize();
-        logger.debug("Generated JWS token for user {}: {}", userId, token);
+        logger.debug("Generated access token for user {}: {}", userId, token);
 
         tokenService.saveToken(userId.toString(), token, expiration * 1000);
+        return token;
+    }
+
+    public String generateRefreshToken(Long userId) throws JOSEException {
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject(userId.toString())
+                .claim("type", "refresh")
+                .issueTime(new Date())
+                .expirationTime(new Date(System.currentTimeMillis() + 604800 * 1000)) // 7 ngày
+                .build();
+
+        JWSHeader header = new JWSHeader(JWSAlgorithm.HS256);
+        SignedJWT signedJWT = new SignedJWT(header, claimsSet);
+        signedJWT.sign(new MACSigner(secret));
+
+        String token = signedJWT.serialize();
+        logger.debug("Generated refresh token for user {}: {}", userId, token);
         return token;
     }
 
@@ -95,7 +113,7 @@ public class JWTUtil {
             return false;
         }
 
-        if (tokenService.isSpecificTokenRevoke(String.valueOf(userId), token)) {
+        if (tokenService.isSpecificTokenRevoked(String.valueOf(userId), token)) {
             logger.warn("Token cụ thể cho người dùng {} đã bị thu hồi", userId);
             return false;
         }
@@ -105,6 +123,36 @@ public class JWTUtil {
             logger.warn("Token cho người dùng {} đã hết hạn hoặc không có thời gian hết hạn", userId);
             return false;
         }
+        return true;
+    }
+
+    public boolean validateRefreshToken(String token, Long userId) throws JOSEException, ParseException {
+        SignedJWT signedJWT = SignedJWT.parse(token);
+        if (!signedJWT.verify(new MACVerifier(secret))) {
+            logger.warn("Chữ ký refresh token không hợp lệ");
+            return false;
+        }
+
+        JWTClaimsSet claimsSet = signedJWT.getJWTClaimsSet();
+        String tokenType = claimsSet.getStringClaim("type");
+        String subject = claimsSet.getSubject();
+
+        if (!"refresh".equals(tokenType)) {
+            logger.warn("Token không phải refresh token");
+            return false;
+        }
+
+        if (!subject.equals(userId.toString())) {
+            logger.warn("UserId không khớp trong refresh token: token userId={}, expected={}", subject, userId);
+            return false;
+        }
+
+        Date expirationDate = claimsSet.getExpirationTime();
+        if (expirationDate == null || expirationDate.before(new Date())) {
+            logger.warn("Refresh token đã hết hạn");
+            return false;
+        }
+
         return true;
     }
 
