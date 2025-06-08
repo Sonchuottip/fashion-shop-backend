@@ -2,14 +2,18 @@ package com.example.fashionshopbackend.service.product;
 
 import com.example.fashionshopbackend.dto.promotion.PromotionDTO;
 import com.example.fashionshopbackend.dto.promotion.PromotedProductPromotionDTO;
+import com.example.fashionshopbackend.dto.promotion.PromotionDetailsDTO;
 import com.example.fashionshopbackend.dto.promotion.UpdatePromotionDTO;
 import com.example.fashionshopbackend.entity.promotion.Promotion;
 import com.example.fashionshopbackend.entity.promotion.PromotionCategory;
 import com.example.fashionshopbackend.entity.promotion.PromotionProduct;
 import com.example.fashionshopbackend.entity.product.Product;
+import com.example.fashionshopbackend.entity.product.Category;
 import com.example.fashionshopbackend.repository.PromotionCategoryRepository;
 import com.example.fashionshopbackend.repository.PromotionProductRepository;
 import com.example.fashionshopbackend.repository.PromotionRepository;
+import com.example.fashionshopbackend.repository.ProductRepository;
+import com.example.fashionshopbackend.repository.CategoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,19 +45,42 @@ public class PromotionService {
     private PromotionProductRepository promotionProductRepository;
 
     @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
     private static final long CACHE_TTL_SECONDS = 300; // 5 phút
 
-    // Lấy danh sách khuyến mãi với danh mục (phân trang)
+    // Lấy danh sách khuyến mãi với danh mục/sản phẩm (phân trang)
     public Page<PromotionDTO> getPromotionsByCategories(Pageable pageable) {
-        String cacheKey = "promotions:categories:page:" + pageable.getPageNumber() + ":" + pageable.getPageSize();
-        Page<PromotionDTO> cachedPromotions = (Page<PromotionDTO>) redisTemplate.opsForValue().get(cacheKey);
-        if (cachedPromotions != null) {
-            logger.info("Retrieved promotions from cache: {}", cacheKey);
-            return cachedPromotions;
+        String cacheKey = "promotions:categories:page=" + pageable.getPageNumber() +
+                ":size=" + pageable.getPageSize() +
+                ":sort=" + pageable.getSort().toString().replaceAll("[, ]", "_");
+
+        // Lấy dữ liệu từ cache
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached instanceof Page) {
+            Page<?> page = (Page<?>) cached;
+            Object content = page.getContent();
+            if (content instanceof List<?> && !((List<?>) content).isEmpty() && ((List<?>) content).get(0) instanceof PromotionDTO) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Page<PromotionDTO> result = (Page<PromotionDTO>) page;
+                    logger.info("Retrieved promotions from cache: {}", cacheKey);
+                    return result;
+                } catch (ClassCastException e) {
+                    logger.error("Failed to cast cached data to Page<PromotionDTO> for key: {}", cacheKey, e);
+                }
+            } else {
+                logger.warn("Invalid cache content for key: {}", cacheKey);
+            }
         }
 
+        // Nếu không có cache hoặc cache không hợp lệ, truy vấn từ cơ sở dữ liệu
         Page<Promotion> promotions = promotionRepository.findActivePromotionsPageable(LocalDate.now(), pageable);
         Page<PromotionDTO> dtos = promotions.map(promotion -> {
             PromotionDTO dto = new PromotionDTO();
@@ -62,30 +89,108 @@ public class PromotionService {
             dto.setDiscountPercent(promotion.getDiscountPercent());
             dto.setStartDate(promotion.getStartDate().toString());
             dto.setEndDate(promotion.getEndDate().toString());
+            dto.setAppliesTo(promotion.getAppliesTo());
             List<Integer> categoryIds = promotionRepository.findCategoryIdsByPromotionId(promotion.getPromotionId());
             dto.setCategoryIds(categoryIds);
+            List<Integer> productIds = promotionRepository.findProductIdsByPromotionId(promotion.getPromotionId());
+            dto.setProductIds(productIds);
             return dto;
         });
 
+        // Lưu vào cache
         redisTemplate.opsForValue().set(cacheKey, dtos, CACHE_TTL_SECONDS, TimeUnit.SECONDS);
         logger.info("Cached promotions: {}", cacheKey);
         return dtos;
+    }
+
+    // Lấy chi tiết khuyến mãi áp dụng
+    public PromotionDetailsDTO getPromotionDetails(Integer productId, Integer categoryId) {
+        Optional<Promotion> productPromotion = Optional.empty();
+        Optional<Promotion> categoryPromotion = Optional.empty();
+
+        if (productId != null) {
+            productPromotion = promotionRepository.findActivePromotionByProductId(productId, LocalDate.now());
+        }
+        if (categoryId != null || (productId != null && productRepository.findById(productId).isPresent())) {
+            Integer catId = categoryId != null ? categoryId : productRepository.findById(productId).get().getCategory().getCategoryId();
+            categoryPromotion = promotionRepository.findActivePromotionByCategoryId(catId, LocalDate.now());
+        }
+
+        // Ưu tiên khuyến mãi PRODUCT trước CATEGORY
+        Promotion selectedPromotion = productPromotion.orElse(categoryPromotion.orElse(null));
+        PromotionDetailsDTO detailsDTO = new PromotionDetailsDTO();
+        if (selectedPromotion != null) {
+            PromotionDTO promotionDTO = convertToPromotionDTO(selectedPromotion);
+            detailsDTO.setPromotion(promotionDTO);
+
+            // Lấy sản phẩm áp dụng
+            List<Integer> productIds = promotionRepository.findProductIdsByPromotionId(selectedPromotion.getPromotionId());
+            List<PromotionDetailsDTO.ProductDTO> productDTOs = productIds.stream()
+                    .map(id -> productRepository.findById(id).orElse(null))
+                    .filter(p -> p != null)
+                    .map(p -> {
+                        PromotionDetailsDTO.ProductDTO dto = new PromotionDetailsDTO.ProductDTO();
+                        dto.setProductId(p.getProductId());
+                        dto.setName(p.getName());
+                        dto.setOriginalPrice(p.getPrice());
+                        BigDecimal discountedPrice = calculateDiscountedPrice(p.getPrice(), selectedPromotion);
+                        dto.setDiscountedPrice(discountedPrice);
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+            detailsDTO.setProducts(productDTOs);
+
+            // Lấy danh mục áp dụng
+            List<Integer> categoryIds = promotionRepository.findCategoryIdsByPromotionId(selectedPromotion.getPromotionId());
+            List<PromotionDetailsDTO.CategoryDTO> categoryDTOs = categoryIds.stream()
+                    .map(id -> categoryRepository.findById(id).orElse(null))
+                    .filter(c -> c != null)
+                    .map(c -> {
+                        PromotionDetailsDTO.CategoryDTO dto = new PromotionDetailsDTO.CategoryDTO();
+                        dto.setCategoryId(c.getCategoryId());
+                        dto.setName(c.getName());
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+            detailsDTO.setCategories(categoryDTOs);
+        }
+
+        return detailsDTO;
+    }
+
+    // Lấy khuyến mãi áp dụng theo sản phẩm/danh mục
+    public PromotedProductPromotionDTO getApplicablePromotionDTO(Integer productId, Integer categoryId) {
+        Optional<Promotion> productPromotion = Optional.empty();
+        Optional<Promotion> categoryPromotion = Optional.empty();
+
+        if (productId != null) {
+            productPromotion = promotionRepository.findActivePromotionByProductId(productId, LocalDate.now());
+        }
+        if (categoryId != null || (productId != null && productRepository.findById(productId).isPresent())) {
+            Integer catId = categoryId != null ? categoryId : productRepository.findById(productId).get().getCategory().getCategoryId();
+            categoryPromotion = promotionRepository.findActivePromotionByCategoryId(catId, LocalDate.now());
+        }
+
+        // Ưu tiên khuyến mãi PRODUCT trước CATEGORY
+        Promotion selectedPromotion = productPromotion.orElse(categoryPromotion.orElse(null));
+        return createPromotionDTO(selectedPromotion);
     }
 
     // Kiểm tra khuyến mãi áp dụng cho sản phẩm
     public Optional<Promotion> getApplicablePromotion(Product product) {
         Optional<Promotion> productPromotion = promotionRepository.findActivePromotionByProductId(
                 product.getProductId(), LocalDate.now());
-        Optional<Promotion> categoryPromotion = promotionRepository.findActivePromotionByCategoryId(
+        if (productPromotion.isPresent()) {
+            return productPromotion;
+        }
+        return promotionRepository.findActivePromotionByCategoryId(
                 product.getCategory().getCategoryId(), LocalDate.now());
-
-        return productPromotion.isPresent() ? productPromotion : categoryPromotion;
     }
 
     // Tính giá giảm giá cho sản phẩm
     public BigDecimal calculateDiscountedPrice(BigDecimal originalPrice, Promotion promotion) {
         if (promotion == null) {
-            return null;
+            return originalPrice;
         }
         BigDecimal discountPercent = promotion.getDiscountPercent();
         return originalPrice.multiply(BigDecimal.ONE.subtract(discountPercent.divide(BigDecimal.valueOf(100))));
@@ -173,18 +278,6 @@ public class PromotionService {
         return convertToPromotionDTO(promotion);
     }
 
-    // Lấy khuyến mãi áp dụng theo sản phẩm/danh mục
-    public PromotedProductPromotionDTO getApplicablePromotionDTO(Integer productId, Integer categoryId) {
-        Optional<Promotion> promotion = Optional.empty();
-        if (productId != null) {
-            promotion = promotionRepository.findActivePromotionByProductId(productId, LocalDate.now());
-        }
-        if (promotion.isEmpty() && categoryId != null) {
-            promotion = promotionRepository.findActivePromotionByCategoryId(categoryId, LocalDate.now());
-        }
-        return createPromotionDTO(promotion.orElse(null));
-    }
-
     // Xóa cache khuyến mãi
     public void clearPromotionCache() {
         redisTemplate.delete(redisTemplate.keys("promotions:*"));
@@ -198,10 +291,10 @@ public class PromotionService {
             throw new IllegalArgumentException("Discount percent must be between 0 and 100");
         }
         if (dto.getEndDate().isBefore(dto.getStartDate())) {
-            throw new IllegalArgumentException("End date must be after start date");
+            throw new IllegalArgumentException("End date must be after startDate");
         }
-        if (!List.of("CATEGORY", "PRODUCT").contains(dto.getAppliesTo())) {
-            throw new IllegalArgumentException("Applies to must be CATEGORY or PRODUCT");
+        if (!List.of("CATEGORY", "PRODUCT", "ALL").contains(dto.getAppliesTo())) {
+            throw new IllegalArgumentException("AppliesTo must be CATEGORY, PRODUCT, or ALL");
         }
         if (!List.of("male", "female", "unisex").contains(dto.getGender())) {
             throw new IllegalArgumentException("Gender must be male, female, or unisex");
@@ -225,6 +318,7 @@ public class PromotionService {
                 promotionProductRepository.save(pp);
             });
         }
+        // Nếu appliesTo=ALL, không cần lưu liên kết
     }
 
     // Chuyển đổi sang PromotionDTO
@@ -235,8 +329,11 @@ public class PromotionService {
         dto.setDiscountPercent(promotion.getDiscountPercent());
         dto.setStartDate(promotion.getStartDate().toString());
         dto.setEndDate(promotion.getEndDate().toString());
+        dto.setAppliesTo(promotion.getAppliesTo());
         List<Integer> categoryIds = promotionRepository.findCategoryIdsByPromotionId(promotion.getPromotionId());
         dto.setCategoryIds(categoryIds);
+        List<Integer> productIds = promotionRepository.findProductIdsByPromotionId(promotion.getPromotionId());
+        dto.setProductIds(productIds);
         return dto;
     }
 }

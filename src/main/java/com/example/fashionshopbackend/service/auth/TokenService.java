@@ -50,8 +50,4 @@ public class TokenService {
         return !tokens.contains(token);
     }
 
-    public boolean isSpecificTokenRevoked(String userId, String token) {
-        String key = tokenKey + userId + ":" + token;
-        return redisTemplate.opsForValue().get(key) == null;
-    }
 }

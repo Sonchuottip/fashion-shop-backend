@@ -113,7 +113,7 @@ public class JWTUtil {
             return false;
         }
 
-        if (tokenService.isSpecificTokenRevoked(String.valueOf(userId), token)) {
+        if (tokenService.isSpecificTokenRevoke(String.valueOf(userId), token)) {
             logger.warn("Token cụ thể cho người dùng {} đã bị thu hồi", userId);
             return false;
         }

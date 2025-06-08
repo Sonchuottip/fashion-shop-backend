@@ -1,27 +1,42 @@
 package com.example.fashionshopbackend.entity.customer;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
+
+import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "Cart")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
+@Table(name = "cart")
 public class Cart {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "CartID")
     private Long cartId;
 
-    @Column(name = "UserID", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "VariantID", nullable = false)
+    @Column(name = "variant_id", nullable = false)
     private Long variantId;
 
-    @Column(name = "Quantity", nullable = false)
+    @Column(nullable = false)
     private Integer quantity;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
+
 }

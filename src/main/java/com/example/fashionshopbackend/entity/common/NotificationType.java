@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.service.common;
+package com.example.fashionshopbackend.entity.common;
 
 import jakarta.persistence.*;
 import lombok.Data;

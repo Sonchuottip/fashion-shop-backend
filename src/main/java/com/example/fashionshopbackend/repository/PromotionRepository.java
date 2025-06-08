@@ -40,5 +40,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, Integer> {
             @Param("categoryId") Integer categoryId,
             @Param("currentDate") LocalDate currentDate);
 
+    @Query("SELECT pp.productId FROM PromotionProduct pp WHERE pp.promotionId = :promotionId")
+    List<Integer> findProductIdsByPromotionId(Integer promotionId);
 
 }

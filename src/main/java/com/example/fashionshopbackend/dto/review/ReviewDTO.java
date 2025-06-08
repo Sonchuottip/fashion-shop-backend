@@ -1,4 +1,4 @@
-package com.example.fashionshopbackend.dto.customer;
+package com.example.fashionshopbackend.dto.review;
 
 import lombok.Data;
 

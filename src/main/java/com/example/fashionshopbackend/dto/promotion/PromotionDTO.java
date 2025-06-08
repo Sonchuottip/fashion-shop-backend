@@ -11,5 +11,7 @@ public class PromotionDTO {
     private BigDecimal discountPercent;
     private String startDate;
     private String endDate;
-    private List<Integer> categoryIds; // Danh sách categoryId liên kết
+    private String appliesTo;
+    private List<Integer> categoryIds;// Danh sách categoryId liên kết
+    private List<Integer> productIds;
 }
