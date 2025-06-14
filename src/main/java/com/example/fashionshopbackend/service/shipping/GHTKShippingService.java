@@ -1,10 +1,14 @@
 package com.example.fashionshopbackend.service.shipping;
 
+import com.example.fashionshopbackend.entity.order.OrderDetails;
+import com.example.fashionshopbackend.entity.order.Orders;
 import com.example.fashionshopbackend.entity.shipping.Shipping;
 import com.example.fashionshopbackend.repository.OrderDetailsRepository;
 import com.example.fashionshopbackend.repository.OrderRepository;
+import com.example.fashionshopbackend.repository.PaymentsRepository;
 import com.example.fashionshopbackend.repository.ShippingRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.fashionshopbackend.entity.payment.Payments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +44,9 @@ public class GHTKShippingService {
 
     @Autowired
     private OrderDetailsRepository orderDetailsRepository;
+
+    @Autowired
+    private PaymentsRepository paymentsRepository;
 
     @Autowired
     private ShippingRepository shippingRepository;
@@ -215,5 +224,14 @@ public class GHTKShippingService {
         orderRepository.save(order);
 
         logger.info("Updated shipping status for tracking number: {}", labelId);
+    }
+
+    private void confirmCODPayment(Integer orderId) {
+        // Logic xác nhận thanh toán COD
+        Payments payment = paymentsRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for order: " + orderId));
+        payment.setPaymentStatus("paid");
+        paymentsRepository.save(payment);
+        logger.info("Confirmed COD payment for order: {}", orderId);
     }
 }

@@ -30,7 +30,7 @@ public class Orders {
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
-    @Column(name = "order_status", nullable = false)
+    @Column(name = "order_status", nullable = false, length = 20)
     private String orderStatus = "pending";
 
     @Column(name = "payment_status", nullable = false)
